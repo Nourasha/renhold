@@ -33,7 +33,12 @@ export function TaskList({
 }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", priority: "medium", dueDate: "" });
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    dueDate: "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -108,15 +113,20 @@ export function TaskList({
               <textarea
                 placeholder="Beskrivelse (valgfritt)"
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
 
               <div className="flex gap-3">
                 <select
+                  title="priority"
                   value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, priority: e.target.value })
+                  }
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="low">Lav prioritet</option>
@@ -125,9 +135,12 @@ export function TaskList({
                 </select>
 
                 <input
+                  title="date"
                   type="date"
                   value={form.dueDate}
-                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, dueDate: e.target.value })
+                  }
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -159,7 +172,9 @@ export function TaskList({
         <div className="text-center py-16 text-gray-400">
           <p className="text-4xl mb-2">{status === "pending" ? "📋" : "✅"}</p>
           <p className="text-sm">
-            {status === "pending" ? "Ingen aktive oppgaver" : "Ingen fullførte oppgaver"}
+            {status === "pending"
+              ? "Ingen aktive oppgaver"
+              : "Ingen fullførte oppgaver"}
           </p>
         </div>
       ) : (
@@ -185,7 +200,9 @@ export function TaskList({
                   {task.title}
                 </p>
                 {task.description && (
-                  <p className="text-sm text-gray-500 mt-0.5">{task.description}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {task.description}
+                  </p>
                 )}
                 <div className="flex items-center gap-2 mt-2">
                   <span
@@ -195,7 +212,8 @@ export function TaskList({
                   </span>
                   {task.dueDate && (
                     <span className="text-xs text-gray-400">
-                      Frist: {new Date(task.dueDate).toLocaleDateString("nb-NO")}
+                      Frist:{" "}
+                      {new Date(task.dueDate).toLocaleDateString("nb-NO")}
                     </span>
                   )}
                 </div>
