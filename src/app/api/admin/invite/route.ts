@@ -40,4 +40,5 @@ export async function GET(req: NextRequest) {
     usedBy: c.usedBy,
     createdBy: c.createdBy,
   }));
+  return NextResponse.json({ codes: safe });
 }
