@@ -32,14 +32,12 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  const safe = codes.map(
-    ({
-      codeHash: _hash,
-      ...rest
-    }: {
-      codeHash: string;
-      [key: string]: unknown;
-    }) => rest,
-  );
-  return NextResponse.json({ codes: safe });
+  const safe = codes.map((c) => ({
+    id: c.id,
+    used: c.used,
+    createdAt: c.createdAt,
+    usedAt: c.usedAt,
+    usedBy: c.usedBy,
+    createdBy: c.createdBy,
+  }));
 }
