@@ -35,6 +35,6 @@ export async function GET(req: NextRequest) {
   });
 
   // Never expose codeHash — return only metadata
-  const safe = codes.map(({ codeHash: _, ...rest }) => rest);
+  const safe = codes.map(({ codeHash: _hash, ...rest }) => rest);
   return NextResponse.json({ codes: safe });
 }
