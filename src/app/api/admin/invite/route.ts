@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ikke autorisert" }, { status: 403 });
   }
 
-  // Generate a readable plain-text code (shown once, never stored)
   const plainCode = crypto.randomBytes(6).toString("hex").toUpperCase();
   const codeHash = await bcrypt.hash(plainCode, 10);
 
@@ -20,7 +19,6 @@ export async function POST(req: NextRequest) {
     data: { codeHash, createdBy: (session.user as any).id },
   });
 
-  // Return the PLAIN code — it will never be retrievable again
   return NextResponse.json({ code: plainCode }, { status: 201 });
 }
 
@@ -34,7 +32,14 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  // Never expose codeHash — return only metadata
-  const safe = codes.map(({ codeHash: _hash, ...rest }) => rest);
+  const safe = codes.map(
+    ({
+      codeHash: _hash,
+      ...rest
+    }: {
+      codeHash: string;
+      [key: string]: unknown;
+    }) => rest,
+  );
   return NextResponse.json({ codes: safe });
 }
