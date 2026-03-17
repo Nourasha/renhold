@@ -32,13 +32,23 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  const safe = codes.map((c) => ({
-    id: c.id,
-    used: c.used,
-    createdAt: c.createdAt,
-    usedAt: c.usedAt,
-    usedBy: c.usedBy,
-    createdBy: c.createdBy,
-  }));
+  const safe = codes.map(
+    (c: {
+      id: string;
+      used: boolean;
+      createdAt: Date;
+      usedAt: Date | null;
+      usedBy: string | null;
+      createdBy: string;
+      codeHash: string;
+    }) => ({
+      id: c.id,
+      used: c.used,
+      createdAt: c.createdAt,
+      usedAt: c.usedAt,
+      usedBy: c.usedBy,
+      createdBy: c.createdBy,
+    }),
+  );
   return NextResponse.json({ codes: safe });
 }
