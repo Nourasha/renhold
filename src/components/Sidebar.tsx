@@ -97,7 +97,7 @@ export function Sidebar({ user }: SidebarProps) {
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <div>
                 <h1 className="text-lg font-bold text-gray-900">
-                  Textilia Oslo renhold
+                  Textilia Oslo Renhold
                 </h1>
                 <p className="text-xs text-gray-400">Arbeidsverktøy</p>
               </div>
