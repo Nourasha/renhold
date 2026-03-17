@@ -11,7 +11,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Oversikt", icon: "🏠" },
-  { href: "/dashboard/oppgaver", label: "Oppgaver", icon: "📋" },
+  { href: "/dashboard/oppgaver", label: "Arbeidsoppgaver", icon: "📋" },
   { href: "/dashboard/ferdige", label: "Ferdige oppgaver", icon: "✅" },
   { href: "/dashboard/ukeplan", label: "Ukeplan", icon: "📅" },
   { href: "/dashboard/avvik", label: "Avvik", icon: "⚠️" },
