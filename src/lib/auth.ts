@@ -9,6 +9,7 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: {
     strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60,
   },
   providers: [
     CredentialsProvider({
@@ -28,7 +29,7 @@ export const authOptions: NextAuthOptions = {
 
         const passwordMatch = await bcrypt.compare(
           credentials.password,
-          user.password
+          user.password,
         );
 
         if (!passwordMatch) return null;
