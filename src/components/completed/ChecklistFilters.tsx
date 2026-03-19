@@ -1,32 +1,25 @@
 // src/components/completed/ChecklistFilters.tsx
-import { formatDate } from "./types";
 
 interface Props {
   filterUser: string;
   filterWeek: string;
-  filterDate: string;
   allUsers: [string, string][];
   allWeekKeys: string[];
-  allDates: string[];
   onUserChange: (v: string) => void;
   onWeekChange: (v: string) => void;
-  onDateChange: (v: string) => void;
   onReset: () => void;
 }
 
 export function ChecklistFilters({
   filterUser,
   filterWeek,
-  filterDate,
   allUsers,
   allWeekKeys,
-  allDates,
   onUserChange,
   onWeekChange,
-  onDateChange,
   onReset,
 }: Props) {
-  const hasFilter = filterUser || filterWeek || filterDate;
+  const hasFilter = filterUser || filterWeek;
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -37,7 +30,9 @@ export function ChecklistFilters({
       >
         <option value="">Alle brukere</option>
         {allUsers.map(([id, name]) => (
-          <option key={id} value={id}>{name}</option>
+          <option key={id} value={id}>
+            {name}
+          </option>
         ))}
       </select>
 
@@ -50,19 +45,12 @@ export function ChecklistFilters({
         {allWeekKeys.map((w) => {
           const num = parseInt(w.split("-W")[1]);
           const year = parseInt(w.split("-W")[0]);
-          return <option key={w} value={w}>Uke {num} ({year})</option>;
+          return (
+            <option key={w} value={w}>
+              Uke {num} ({year})
+            </option>
+          );
         })}
-      </select>
-
-      <select
-        value={filterDate}
-        onChange={(e) => onDateChange(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">Alle datoer</option>
-        {allDates.map((d) => (
-          <option key={d} value={d}>{formatDate(d)}</option>
-        ))}
       </select>
 
       {hasFilter && (
