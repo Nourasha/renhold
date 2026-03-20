@@ -98,11 +98,10 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-
       {/* Navn */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Fullt navn
+          Navn *
         </label>
         <input
           type="text"
@@ -124,7 +123,7 @@ export function RegisterForm() {
       {/* E-post */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          E-post
+          E-post *
         </label>
         <input
           type="email"
@@ -146,7 +145,7 @@ export function RegisterForm() {
       {/* Passord */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Passord
+          Passord *
         </label>
         <input
           type="password"
@@ -165,13 +164,19 @@ export function RegisterForm() {
         )}
         {form.password && (
           <ul className="mt-1.5 space-y-0.5">
-            <li className={`text-xs ${form.password.length >= 8 ? "text-green-600" : "text-gray-400"}`}>
+            <li
+              className={`text-xs ${form.password.length >= 8 ? "text-green-600" : "text-gray-400"}`}
+            >
               {form.password.length >= 8 ? "✓" : "○"} Minst 8 tegn
             </li>
-            <li className={`text-xs ${/[A-Z]/.test(form.password) ? "text-green-600" : "text-gray-400"}`}>
+            <li
+              className={`text-xs ${/[A-Z]/.test(form.password) ? "text-green-600" : "text-gray-400"}`}
+            >
               {/[A-Z]/.test(form.password) ? "✓" : "○"} Minst én stor bokstav
             </li>
-            <li className={`text-xs ${/[0-9]/.test(form.password) ? "text-green-600" : "text-gray-400"}`}>
+            <li
+              className={`text-xs ${/[0-9]/.test(form.password) ? "text-green-600" : "text-gray-400"}`}
+            >
               {/[0-9]/.test(form.password) ? "✓" : "○"} Minst ett tall
             </li>
           </ul>
@@ -181,7 +186,7 @@ export function RegisterForm() {
       {/* Bekreft passord */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Bekreft passord
+          Bekreft passord *
         </label>
         <input
           type="password"
@@ -193,17 +198,21 @@ export function RegisterForm() {
           placeholder="Gjenta passord"
         />
         {touched.confirmPassword && fieldErrors.confirmPassword && (
-          <p className="text-red-500 text-xs mt-1">⚠ {fieldErrors.confirmPassword}</p>
+          <p className="text-red-500 text-xs mt-1">
+            ⚠ {fieldErrors.confirmPassword}
+          </p>
         )}
-        {touched.confirmPassword && !fieldErrors.confirmPassword && form.confirmPassword && (
-          <p className="text-green-600 text-xs mt-1">✓ Passordene matcher</p>
-        )}
+        {touched.confirmPassword &&
+          !fieldErrors.confirmPassword &&
+          form.confirmPassword && (
+            <p className="text-green-600 text-xs mt-1">✓ Passordene matcher</p>
+          )}
       </div>
 
       {/* Passkode */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Passkode fra administrator
+          Passkode fra administrator *
         </label>
         <input
           type="text"
@@ -216,10 +225,14 @@ export function RegisterForm() {
           maxLength={12}
         />
         {touched.inviteCode && fieldErrors.inviteCode && (
-          <p className="text-red-500 text-xs mt-1">⚠ {fieldErrors.inviteCode}</p>
+          <p className="text-red-500 text-xs mt-1">
+            ⚠ {fieldErrors.inviteCode}
+          </p>
         )}
         {touched.inviteCode && !fieldErrors.inviteCode && form.inviteCode && (
-          <p className="text-green-600 text-xs mt-1">✓ Passkode ser gyldig ut</p>
+          <p className="text-green-600 text-xs mt-1">
+            ✓ Passkode ser gyldig ut
+          </p>
         )}
       </div>
 
