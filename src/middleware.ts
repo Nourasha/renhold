@@ -13,23 +13,12 @@ export default withAuth(
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
-    // Already logged in — redirect away from login/register
-    if (pathname === "/login" || pathname === "/register") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-
     return NextResponse.next();
   },
   {
     callbacks: {
-      // Only run middleware if user is logged in OR trying to access protected route
       authorized({ token, req }) {
         const { pathname } = req.nextUrl;
-
-        // Allow unauthenticated access to login and register
-        if (pathname === "/login" || pathname === "/register" || pathname === "/") {
-          return true;
-        }
 
         // All /dashboard routes require authentication
         if (pathname.startsWith("/dashboard")) {
@@ -39,13 +28,9 @@ export default withAuth(
         return true;
       },
     },
-  }
+  },
 );
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/login",
-    "/register",
-  ],
+  matcher: ["/dashboard/:path*"],
 };
