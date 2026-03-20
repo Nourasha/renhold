@@ -90,7 +90,6 @@ export function DayCard({
 
       {/* Day content */}
       <div className="p-4 space-y-3">
-
         {/* Note editor */}
         {isNoteOpen && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
@@ -136,7 +135,7 @@ export function DayCard({
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getUserColorClass(
                         note.user.id,
-                        allUserIds
+                        allUserIds,
                       )}`}
                     >
                       {note.user.name || "Ukjent"}
@@ -150,7 +149,9 @@ export function DayCard({
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {note.content}
+                  </p>
                 </div>
               </div>
             ))}
@@ -163,8 +164,10 @@ export function DayCard({
             {Object.entries(completionsByGroup).map(([groupTitle, itemMap]) => {
               const firstCompletion = Object.values(itemMap)[0]?.[0];
               const color = firstCompletion?.item.group.color || "blue";
-              const headerCls = groupHeaderColors[color] || groupHeaderColors.blue;
-              const borderCls = groupBorderColors[color] || groupBorderColors.blue;
+              const headerCls =
+                groupHeaderColors[color] || groupHeaderColors.blue;
+              const borderCls =
+                groupBorderColors[color] || groupBorderColors.blue;
 
               return (
                 <div
@@ -175,38 +178,50 @@ export function DayCard({
                     <h4 className="font-bold text-sm">{groupTitle}</h4>
                   </div>
                   <div className="bg-white p-3 space-y-2">
-                    {Object.entries(itemMap).map(([label, completionsForItem]) => (
-                      <div key={label} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-green-500 flex-shrink-0">✓</span>
-                          <span className="text-sm text-gray-800 truncate">{label}</span>
-                        </div>
-                        <div className="flex items-center gap-1 flex-wrap justify-end flex-shrink-0">
-                          {completionsForItem.map((c) => (
-                            <div key={c.id} className="flex items-center gap-0.5">
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${getUserColorClass(
-                                  c.user.id,
-                                  allUserIds
-                                )}`}
+                    {Object.entries(itemMap).map(
+                      ([label, completionsForItem]) => (
+                        <div
+                          key={label}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="text-green-500 flex-shrink-0">
+                              ✓
+                            </span>
+                            <span className="text-sm text-gray-800 truncate">
+                              {label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-wrap justify-end flex-shrink-0">
+                            {completionsForItem.map((c) => (
+                              <div
+                                key={c.id}
+                                className="flex items-center gap-0.5"
                               >
-                                {c.user.name || "Ukjent"}
-                              </span>
-                              {c.user.id === currentUserId && (
-                                <button
-                                  onClick={() => onDeleteCompletion(c.id)}
-                                  disabled={deletingId === c.id}
-                                  className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none ml-0.5 disabled:opacity-40"
-                                  title="Slett min godkjenning"
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${getUserColorClass(
+                                    c.user.id,
+                                    allUserIds,
+                                  )}`}
                                 >
-                                  ×
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                                  {c.user.name || "Ukjent"}
+                                </span>
+                                {c.user.id === currentUserId && (
+                                  <button
+                                    onClick={() => onDeleteCompletion(c.id)}
+                                    disabled={deletingId === c.id}
+                                    className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none ml-0.5 disabled:opacity-40"
+                                    title="Slett min godkjenning"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 </div>
               );
