@@ -1,15 +1,23 @@
 // src/app/dashboard/layout.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/Sidebar";
+import { FloatingChat } from "@/components/chat/FloatingChat";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Session is guaranteed by middleware — no need to redirect here
   const session = await getServerSession(authOptions);
+  const currentUserId = (session?.user as any)?.id;
+
+  const users = await prisma.user.findMany({
+    where: { id: { not: currentUserId } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -17,6 +25,10 @@ export default async function DashboardLayout({
       <main className="flex-1 p-4 md:p-6 pt-[72px] md:pt-6 overflow-auto">
         {children}
       </main>
+      <FloatingChat
+        currentUser={{ id: currentUserId, name: session?.user?.name || "" }}
+        users={users}
+      />
     </div>
   );
 }

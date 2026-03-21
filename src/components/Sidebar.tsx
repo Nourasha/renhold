@@ -15,7 +15,6 @@ const navItems = [
   { href: "/dashboard/ferdige", label: "Ferdige oppgaver", icon: "✅" },
   { href: "/dashboard/ukeplan", label: "Ukeplan", icon: "📅" },
   { href: "/dashboard/avvik", label: "Avvik", icon: "⚠️" },
-  { href: "/dashboard/chat", label: "Chat", icon: "💬" },
 ];
 
 export function Sidebar({ user }: SidebarProps) {
