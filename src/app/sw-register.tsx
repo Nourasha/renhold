@@ -60,8 +60,16 @@ async function sendSubscriptionToServer(subscription: PushSubscription) {
     body: JSON.stringify({
       endpoint: subscription.endpoint,
       keys: {
-        p256dh: btoa(String.fromCharCode(...new Uint8Array(key))),
-        auth: btoa(String.fromCharCode(...new Uint8Array(auth))),
+        p256dh: btoa(
+          Array.from(new Uint8Array(key))
+            .map((b) => String.fromCharCode(b))
+            .join(""),
+        ),
+        auth: btoa(
+          Array.from(new Uint8Array(auth))
+            .map((b) => String.fromCharCode(b))
+            .join(""),
+        ),
       },
     }),
   });
