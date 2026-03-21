@@ -3,142 +3,72 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-interface User {
-  id: string;
-  name: string | null;
-  email: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  receiverId: string | null;
-  createdAt: string | Date;
-  readBy: string;
-  sender: { id: string; name: string | null };
-}
+import { ChatUser, ChatMessage } from "./chat/types";
+import { ConversationSidebar } from "./chat/ConversationSidebar";
+import { ChatHeader } from "./chat/ChatHeader";
+import { MessageBubble } from "./chat/MessageBubble";
+import { MessageInput } from "./chat/MessageInput";
 
 interface Props {
   currentUser: { id: string; name: string };
-  users: User[];
-  initialMessages: Message[];
+  users: ChatUser[];
+  initialMessages: ChatMessage[];
   activeConversation: string | null;
 }
 
-const userColors = [
-  "bg-indigo-500",
-  "bg-pink-500",
-  "bg-teal-500",
-  "bg-amber-500",
-  "bg-cyan-600",
-  "bg-rose-500",
-  "bg-lime-600",
-  "bg-violet-500",
-];
-
-function getUserColor(userId: string, allIds: string[]) {
-  const idx = allIds.indexOf(userId);
-  return userColors[idx % userColors.length] || "bg-gray-500";
-}
-
-function formatTime(dateStr: string | Date) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  if (isToday) {
-    return d.toLocaleTimeString("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-  return (
-    d.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }) +
-    " " +
-    d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })
-  );
-}
-
-export function ChatView({
-  currentUser,
-  users,
-  initialMessages,
-  activeConversation,
-}: Props) {
+export function ChatView({ currentUser, users, initialMessages, activeConversation }: Props) {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(!activeConversation && true);
+  const [showSidebar, setShowSidebar] = useState(!activeConversation);
   const bottomRef = useRef<HTMLDivElement>(null);
+
   const allUserIds = [currentUser.id, ...users.map((u) => u.id)];
-
   const activeUser = users.find((u) => u.id === activeConversation);
-  const conversationTitle = activeUser
-    ? activeUser.name || activeUser.email
-    : "Alle";
+  const conversationTitle = activeUser ? activeUser.name || activeUser.email : "Alle";
 
-  // On mobile, hide sidebar when a conversation is selected
   useEffect(() => {
     if (activeConversation) setShowSidebar(false);
     else setShowSidebar(true);
   }, [activeConversation]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   // Supabase Realtime
   useEffect(() => {
     const channel = supabase
       .channel("messages-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Message" },
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "Message" },
         async (payload) => {
           const newMsg = payload.new as any;
-          const isGroupMsg = !newMsg.receiverId && !activeConversation;
-          const isPrivateMsg =
-            activeConversation &&
-            ((newMsg.senderId === activeConversation &&
-              newMsg.receiverId === currentUser.id) ||
-              (newMsg.senderId === currentUser.id &&
-                newMsg.receiverId === activeConversation));
-
-          if (!isGroupMsg && !isPrivateMsg) return;
-
-          const res = await fetch(
-            activeConversation
-              ? `/api/messages?with=${activeConversation}`
-              : "/api/messages",
+          const isGroup = !newMsg.receiverId && !activeConversation;
+          const isPrivate = activeConversation && (
+            (newMsg.senderId === activeConversation && newMsg.receiverId === currentUser.id) ||
+            (newMsg.senderId === currentUser.id && newMsg.receiverId === activeConversation)
           );
+          if (!isGroup && !isPrivate) return;
+
+          const res = await fetch(activeConversation ? `/api/messages?with=${activeConversation}` : "/api/messages");
           if (res.ok) {
             const data = await res.json();
             setMessages(data.messages);
           }
-        },
+        }
       )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "Message" },
-        (payload) => {
-          setMessages((prev) =>
-            prev.filter((m) => m.id !== (payload.old as any).id),
-          );
-        },
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" },
+        (payload) => setMessages((prev) => prev.filter((m) => m.id !== (payload.old as any).id))
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [activeConversation, currentUser.id]);
-
-  useEffect(() => {
-    setMessages(initialMessages);
-  }, [initialMessages]);
 
   async function sendMessage() {
     if (!input.trim() || sending) return;
@@ -146,10 +76,7 @@ export function ChatView({
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: input.trim(),
-        receiverId: activeConversation || null,
-      }),
+      body: JSON.stringify({ content: input.trim(), receiverId: activeConversation || null }),
     });
     if (res.ok) setInput("");
     setSending(false);
@@ -160,13 +87,6 @@ export function ChatView({
     await fetch(`/api/messages/${id}`, { method: "DELETE" });
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
   function navigateTo(url: string) {
     setShowSidebar(false);
     router.push(url);
@@ -174,125 +94,23 @@ export function ChatView({
 
   return (
     <div className="flex h-[calc(100vh-80px)] md:h-[calc(100vh-48px)] bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      {/* ── Sidebar ── */}
-      <div
-        className={`
-        ${showSidebar ? "flex" : "hidden"} md:flex
-        w-full md:w-64 flex-shrink-0 border-r border-gray-200 flex-col
-        absolute md:relative inset-0 z-10 bg-white md:z-auto
-      `}
-      >
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900">Meldinger</h2>
-        </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Group chat */}
-          <button
-            onClick={() => navigateTo("/dashboard/chat")}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-              !activeConversation
-                ? "bg-blue-50 border-l-4 border-l-blue-500"
-                : ""
-            }`}
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
-              👥
-            </div>
-            <div className="min-w-0">
-              <p
-                className={`text-sm font-medium truncate ${!activeConversation ? "text-blue-700" : "text-gray-900"}`}
-              >
-                Alle
-              </p>
-              <p className="text-xs text-gray-400">Gruppemelding</p>
-            </div>
-          </button>
+      <ConversationSidebar
+        users={users}
+        allUserIds={allUserIds}
+        activeConversation={activeConversation}
+        visible={showSidebar}
+        onSelectAll={() => navigateTo("/dashboard/chat")}
+        onSelectUser={(id) => navigateTo(`/dashboard/chat?with=${id}`)}
+      />
 
-          {/* Individual users */}
-          {users.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => navigateTo(`/dashboard/chat?with=${user.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                activeConversation === user.id
-                  ? "bg-blue-50 border-l-4 border-l-blue-500"
-                  : ""
-              }`}
-            >
-              <div
-                className={`w-10 h-10 rounded-full ${getUserColor(user.id, allUserIds)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
-              >
-                {user.name?.charAt(0).toUpperCase() || "?"}
-              </div>
-              <div className="min-w-0">
-                <p
-                  className={`text-sm font-medium truncate ${activeConversation === user.id ? "text-blue-700" : "text-gray-900"}`}
-                >
-                  {user.name || user.email}
-                </p>
-                <p className="text-xs text-gray-400">Privat</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className={`${showSidebar ? "hidden" : "flex"} md:flex flex-1 flex-col min-w-0`}>
 
-      {/* ── Chat area ── */}
-      <div
-        className={`
-        ${showSidebar ? "hidden" : "flex"} md:flex
-        flex-1 flex-col min-w-0
-      `}
-      >
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3">
-          {/* Back button on mobile */}
-          <button
-            onClick={() => setShowSidebar(true)}
-            className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 flex-shrink-0"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${
-              activeUser
-                ? getUserColor(activeUser.id, allUserIds)
-                : "bg-blue-600"
-            }`}
-          >
-            {activeUser
-              ? activeUser.name?.charAt(0).toUpperCase() || "?"
-              : "👥"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 truncate">
-              {conversationTitle}
-            </p>
-            <p className="text-xs text-gray-400">
-              {activeUser ? "Privat samtale" : "Gruppemelding til alle"}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-xs text-gray-400 hidden sm:inline">
-              Sanntid
-            </span>
-          </div>
-        </div>
+        <ChatHeader
+          activeUser={activeUser}
+          allUserIds={allUserIds}
+          onBack={() => setShowSidebar(true)}
+        />
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
@@ -302,77 +120,26 @@ export function ChatView({
               <p>Ingen meldinger ennå. Si hei!</p>
             </div>
           )}
-
-          {messages.map((msg) => {
-            const isMe = msg.senderId === currentUser.id;
-            return (
-              <div
-                key={msg.id}
-                className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
-              >
-                {!isMe && (
-                  <div
-                    className={`w-7 h-7 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
-                  >
-                    {msg.sender.name?.charAt(0).toUpperCase() || "?"}
-                  </div>
-                )}
-
-                <div className="max-w-[80%] md:max-w-[70%] group">
-                  {!isMe && !activeConversation && (
-                    <p className="text-xs text-gray-500 mb-1 px-1">
-                      {msg.sender.name || "Ukjent"}
-                    </p>
-                  )}
-                  <div
-                    className={`relative px-3 py-2 md:px-4 md:py-2.5 rounded-2xl text-sm ${
-                      isMe
-                        ? "bg-blue-600 text-white rounded-br-sm"
-                        : "bg-gray-100 text-gray-900 rounded-bl-sm"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words">
-                      {msg.content}
-                    </p>
-                    <p
-                      className={`text-xs mt-1 ${isMe ? "text-blue-200" : "text-gray-400"}`}
-                    >
-                      {formatTime(msg.createdAt)}
-                    </p>
-                    {isMe && (
-                      <button
-                        onClick={() => deleteMessage(msg.id)}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs hidden group-hover:flex items-center justify-center"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {messages.map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              currentUserId={currentUser.id}
+              allUserIds={allUserIds}
+              isGroupChat={!activeConversation}
+              onDelete={deleteMessage}
+            />
+          ))}
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-3 py-3 md:px-4 border-t border-gray-200 flex items-end gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={`Skriv til ${conversationTitle}...`}
-            rows={1}
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || sending}
-            className="px-4 py-2.5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-40 transition-colors font-medium text-sm flex-shrink-0"
-          >
-            {sending ? "..." : "Send"}
-          </button>
-        </div>
+        <MessageInput
+          value={input}
+          sending={sending}
+          placeholder={`Skriv til ${conversationTitle}...`}
+          onChange={setInput}
+          onSend={sendMessage}
+        />
       </div>
     </div>
   );
