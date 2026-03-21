@@ -11,6 +11,14 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from(Array.from(rawData).map((char) => char.charCodeAt(0)));
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  return btoa(
+    Array.from(new Uint8Array(buffer))
+      .map((b) => String.fromCharCode(b))
+      .join(""),
+  );
+}
+
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -20,14 +28,11 @@ export function ServiceWorkerRegister() {
         const reg = await navigator.serviceWorker.register("/sw.js");
         console.log("SW registered:", reg.scope);
 
-        // Ask for push permission
         const permission = await Notification.requestPermission();
         if (permission !== "granted") return;
 
-        // Subscribe to push
         const existing = await reg.pushManager.getSubscription();
         if (existing) {
-          // Already subscribed — re-send to server in case it was lost
           await sendSubscriptionToServer(existing);
           return;
         }
@@ -60,16 +65,8 @@ async function sendSubscriptionToServer(subscription: PushSubscription) {
     body: JSON.stringify({
       endpoint: subscription.endpoint,
       keys: {
-        p256dh: btoa(
-          Array.from(new Uint8Array(key))
-            .map((b) => String.fromCharCode(b))
-            .join(""),
-        ),
-        auth: btoa(
-          Array.from(new Uint8Array(auth))
-            .map((b) => String.fromCharCode(b))
-            .join(""),
-        ),
+        p256dh: arrayBufferToBase64(key),
+        auth: arrayBufferToBase64(auth),
       },
     }),
   });
