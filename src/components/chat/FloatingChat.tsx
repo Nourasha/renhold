@@ -11,7 +11,9 @@ interface Props {
 
 export function FloatingChat({ currentUser, users }: Props) {
   const [open, setOpen] = useState(false);
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<string | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -21,7 +23,9 @@ export function FloatingChat({ currentUser, users }: Props) {
 
   const allUserIds = [currentUser.id, ...users.map((u) => u.id)];
   const activeUser = users.find((u) => u.id === activeConversation);
-  const conversationTitle = activeUser ? activeUser.name || activeUser.email : "Alle";
+  const conversationTitle = activeUser
+    ? activeUser.name || activeUser.email
+    : "Alle";
 
   // Fetch unread count
   useEffect(() => {
@@ -46,32 +50,45 @@ export function FloatingChat({ currentUser, users }: Props) {
   useEffect(() => {
     const channel = supabase
       .channel("floating-chat-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "Message" },
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
         async (payload) => {
           const newMsg = payload.new as any;
           const isGroup = !newMsg.receiverId && !activeConversation;
-          const isPrivate = activeConversation && (
-            (newMsg.senderId === activeConversation && newMsg.receiverId === currentUser.id) ||
-            (newMsg.senderId === currentUser.id && newMsg.receiverId === activeConversation)
-          );
+          const isPrivate =
+            activeConversation &&
+            ((newMsg.senderId === activeConversation &&
+              newMsg.receiverId === currentUser.id) ||
+              (newMsg.senderId === currentUser.id &&
+                newMsg.receiverId === activeConversation));
           if (!isGroup && !isPrivate) {
             // Update unread for messages not in active conversation
             setUnread((prev) => prev + 1);
             return;
           }
           await loadMessages(activeConversation);
-        }
+        },
       )
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" },
-        (payload) => setMessages((prev) => prev.filter((m) => m.id !== (payload.old as any).id))
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "Message" },
+        (payload) =>
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== (payload.old as any).id),
+          ),
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeConversation, currentUser.id]);
 
   async function loadMessages(conversationId: string | null) {
-    const url = conversationId ? `/api/messages?with=${conversationId}` : "/api/messages";
+    const url = conversationId
+      ? `/api/messages?with=${conversationId}`
+      : "/api/messages";
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
@@ -90,12 +107,22 @@ export function FloatingChat({ currentUser, users }: Props) {
   async function sendMessage() {
     if (!input.trim() || sending) return;
     setSending(true);
-    await fetch("/api/messages", {
+
+    const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: input.trim(), receiverId: activeConversation || null }),
+      body: JSON.stringify({
+        content: input.trim(),
+        receiverId: activeConversation || null,
+      }),
     });
-    setInput("");
+
+    if (res.ok) {
+      const data = await res.json();
+      // Add message to local state immediately
+      setMessages((prev) => [...prev, data.message]);
+      setInput("");
+    }
     setSending(false);
   }
 
@@ -117,21 +144,32 @@ export function FloatingChat({ currentUser, users }: Props) {
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
-
       {/* ── Chat window ── */}
       {open && (
         <div className="w-[340px] sm:w-[380px] h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
-
           {/* Header */}
           <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {!showConversations && (
                 <button
-                  onClick={() => { setShowConversations(true); setActiveConversation(null); }}
+                  onClick={() => {
+                    setShowConversations(true);
+                    setActiveConversation(null);
+                  }}
                   className="text-white/80 hover:text-white mr-1"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
                   </svg>
                 </button>
               )}
@@ -148,8 +186,18 @@ export function FloatingChat({ currentUser, users }: Props) {
               onClick={toggleOpen}
               className="text-white/80 hover:text-white"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -178,11 +226,15 @@ export function FloatingChat({ currentUser, users }: Props) {
                   onClick={() => selectConversation(user.id)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 text-left"
                 >
-                  <div className={`w-9 h-9 rounded-full ${getUserColor(user.id, allUserIds)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
+                  <div
+                    className={`w-9 h-9 rounded-full ${getUserColor(user.id, allUserIds)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
+                  >
                     {user.name?.charAt(0).toUpperCase() || "?"}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{user.name || user.email}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {user.name || user.email}
+                    </p>
                     <p className="text-xs text-gray-400">Privat</p>
                   </div>
                 </button>
@@ -203,21 +255,36 @@ export function FloatingChat({ currentUser, users }: Props) {
                 {messages.map((msg) => {
                   const isMe = msg.senderId === currentUser.id;
                   return (
-                    <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                    <div
+                      key={msg.id}
+                      className={`flex items-end gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                    >
                       {!isMe && (
-                        <div className={`w-6 h-6 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                        <div
+                          className={`w-6 h-6 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
+                        >
                           {msg.sender.name?.charAt(0).toUpperCase() || "?"}
                         </div>
                       )}
                       <div className="max-w-[75%]">
                         {!isMe && !activeConversation && (
-                          <p className="text-xs text-gray-400 mb-0.5 px-1">{msg.sender.name}</p>
+                          <p className="text-xs text-gray-400 mb-0.5 px-1">
+                            {msg.sender.name}
+                          </p>
                         )}
-                        <div className={`px-3 py-2 rounded-2xl text-sm ${
-                          isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"
-                        }`}>
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                          <p className={`text-xs mt-0.5 ${isMe ? "text-blue-200" : "text-gray-400"}`}>
+                        <div
+                          className={`px-3 py-2 rounded-2xl text-sm ${
+                            isMe
+                              ? "bg-blue-600 text-white rounded-br-sm"
+                              : "bg-gray-100 text-gray-900 rounded-bl-sm"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">
+                            {msg.content}
+                          </p>
+                          <p
+                            className={`text-xs mt-0.5 ${isMe ? "text-blue-200" : "text-gray-400"}`}
+                          >
                             {formatTime(msg.createdAt)}
                           </p>
                         </div>
@@ -243,8 +310,18 @@ export function FloatingChat({ currentUser, users }: Props) {
                   disabled={!input.trim() || sending}
                   className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors flex-shrink-0"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
                   </svg>
                 </button>
               </div>
@@ -259,12 +336,32 @@ export function FloatingChat({ currentUser, users }: Props) {
         className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 relative"
       >
         {open ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
         )}
 
