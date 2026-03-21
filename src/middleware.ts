@@ -8,7 +8,7 @@ export default withAuth(
     const token = req.nextauth.token;
     const role = token?.role as string | undefined;
 
-    // Admin-only routes — redirect non-admins to dashboard
+    // Admin-only routes
     if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
@@ -19,14 +19,14 @@ export default withAuth(
     callbacks: {
       authorized({ token, req }) {
         const { pathname } = req.nextUrl;
-
-        // All /dashboard routes require authentication
         if (pathname.startsWith("/dashboard")) {
           return !!token;
         }
-
         return true;
       },
+    },
+    pages: {
+      signIn: "/login",
     },
   },
 );
