@@ -2,7 +2,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-import { ServiceWorkerRegister } from "./sw-register";
 
 export const metadata: Metadata = {
   title: "Textilia Oslo Renhold",
@@ -40,7 +39,6 @@ export default function RootLayout({
     <html lang="no">
       <body>
         <Providers>{children}</Providers>
-        <ServiceWorkerRegister />
       </body>
     </html>
   );
