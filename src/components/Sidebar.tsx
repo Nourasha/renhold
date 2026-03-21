@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   user: { name?: string; email?: string; role?: string };
@@ -11,20 +11,37 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Oversikt", icon: "🏠" },
-  { href: "/dashboard/oppgaver", label: "Arbeidsoppgaver", icon: "📋" },
+  { href: "/dashboard/oppgaver", label: "Oppgaver", icon: "📋" },
   { href: "/dashboard/ferdige", label: "Ferdige oppgaver", icon: "✅" },
   { href: "/dashboard/ukeplan", label: "Ukeplan", icon: "📅" },
   { href: "/dashboard/avvik", label: "Avvik", icon: "⚠️" },
+  { href: "/dashboard/chat", label: "Chat", icon: "💬" },
 ];
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread count every 10 seconds
+  useEffect(() => {
+    async function fetchUnread() {
+      const res = await fetch("/api/messages/unread");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count);
+      }
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
       {navItems.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = pathname === item.href || pathname.startsWith(item.href + "?");
+        const isChat = item.href === "/dashboard/chat";
         return (
           <Link
             key={item.href}
@@ -37,7 +54,12 @@ export function Sidebar({ user }: SidebarProps) {
             }`}
           >
             <span className="text-base">{item.icon}</span>
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {isChat && unreadCount > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -60,80 +82,50 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <>
-      {/* ── Mobile top bar ─────────────────────── */}
+      {/* Mobile top bar */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 flex items-center justify-between px-4 h-14">
         <span className="font-bold text-gray-900">Textilia Oslo Renhold</span>
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          aria-label="Åpne meny"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+              {unreadCount}
+            </span>
+          )}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
       </header>
 
-      {/* ── Mobile drawer overlay ───────────────── */}
+      {/* Mobile drawer */}
       {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-50 bg-black/40"
-          onClick={() => setMobileOpen(false)}
-        >
-          <aside
-            className="absolute left-0 top-0 bottom-0 w-72 bg-white flex flex-col shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="md:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setMobileOpen(false)}>
+          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <div>
-                <h1 className="text-lg font-bold text-gray-900">
-                  Textilia Oslo Renhold
-                </h1>
-                <p className="text-xs text-gray-400">Arbeidsverktøy</p>
+                <h1 className="text-lg font-bold text-gray-900">Textilia Oslo Renhold</h1>
               </div>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+              <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
               <NavLinks onClick={() => setMobileOpen(false)} />
             </nav>
-
             <div className="px-4 py-4 border-t border-gray-200">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
                   {user.name?.charAt(0).toUpperCase() || "?"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.name}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
                   <p className="text-xs text-gray-400 truncate">{user.email}</p>
                 </div>
               </div>
@@ -148,28 +140,21 @@ export function Sidebar({ user }: SidebarProps) {
         </div>
       )}
 
-      {/* ── Desktop sidebar ─────────────────────── */}
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col min-h-screen sticky top-0">
         <div className="px-6 py-5 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">
-            Textilia Oslo Renhold
-          </h1>
-          <p className="text-xs text-gray-400 mt-0.5">Arbeidsverktøy</p>
+          <h1 className="text-lg font-bold text-gray-900">Textilia Oslo Renhold</h1>
         </div>
-
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <NavLinks />
         </nav>
-
         <div className="px-4 py-4 border-t border-gray-200">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
               {user.name?.charAt(0).toUpperCase() || "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user.name}
-              </p>
+              <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
