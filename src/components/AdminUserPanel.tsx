@@ -19,14 +19,11 @@ export function AdminUserPanel({
 }) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete(user: User) {
-    if (
-      !confirm(
-        `Er du sikker på at du vil slette "${user.name || user.email}"?\n\nDette sletter også alle oppgaver, avvik og notater tilknyttet brukeren.`
-      )
-    )
+    if (!confirm(`Er du sikker på at du vil slette "${user.name || user.email}"?\n\nDette sletter også alle avvik og notater tilknyttet brukeren.`))
       return;
 
     setDeletingId(user.id);
@@ -41,6 +38,33 @@ export function AdminUserPanel({
       setError(data.error || "Noe gikk galt");
     }
     setDeletingId(null);
+  }
+
+  async function handleToggleRole(user: User) {
+    const newRole = user.role === "admin" ? "user" : "admin";
+    const label = newRole === "admin" ? "admin" : "vanlig bruker";
+
+    if (!confirm(`Vil du gjøre "${user.name || user.email}" til ${label}?`)) return;
+
+    setUpdatingId(user.id);
+    setError(null);
+
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, role: newRole } : u))
+      );
+    } else {
+      setError(data.error || "Noe gikk galt");
+    }
+    setUpdatingId(null);
   }
 
   return (
@@ -60,6 +84,7 @@ export function AdminUserPanel({
         {users.map((user) => {
           const isSelf = user.id === currentUserId;
           const isDeleting = deletingId === user.id;
+          const isUpdating = updatingId === user.id;
 
           return (
             <div
@@ -94,13 +119,33 @@ export function AdminUserPanel({
               </div>
 
               {!isSelf && (
-                <button
-                  onClick={() => handleDelete(user)}
-                  disabled={isDeleting}
-                  className="flex-shrink-0 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 transition-colors"
-                >
-                  {isDeleting ? "Sletter..." : "Slett"}
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Toggle admin role */}
+                  <button
+                    onClick={() => handleToggleRole(user)}
+                    disabled={isUpdating}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 ${
+                      user.role === "admin"
+                        ? "text-gray-600 border-gray-200 hover:bg-gray-50"
+                        : "text-blue-600 border-blue-200 hover:bg-blue-50"
+                    }`}
+                  >
+                    {isUpdating
+                      ? "..."
+                      : user.role === "admin"
+                      ? "Fjern admin"
+                      : "Gjør til admin"}
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    onClick={() => handleDelete(user)}
+                    disabled={isDeleting}
+                    className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 transition-colors"
+                  >
+                    {isDeleting ? "Sletter..." : "Slett"}
+                  </button>
+                </div>
               )}
             </div>
           );

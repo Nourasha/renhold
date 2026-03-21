@@ -23,8 +23,29 @@ export async function DELETE(
     return NextResponse.json({ error: "Bruker ikke funnet" }, { status: 404 });
   }
 
-  // Cascade deletes all related data via Prisma schema onDelete: Cascade
   await prisma.user.delete({ where: { id: params.id } });
-
   return NextResponse.json({ success: true });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== "admin") {
+    return NextResponse.json({ error: "Ikke autorisert" }, { status: 403 });
+  }
+
+  const { role } = await req.json();
+  if (!["admin", "user"].includes(role)) {
+    return NextResponse.json({ error: "Ugyldig rolle" }, { status: 400 });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: params.id },
+    data: { role },
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
+  });
+
+  return NextResponse.json({ user: updated });
 }
