@@ -10,39 +10,19 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
 
-  const [pendingTasks, doneTasks, weekPlans, deviations] = await Promise.all([
-    prisma.task.count({ where: { userId, status: "pending" } }),
-    prisma.task.count({ where: { userId, status: "done" } }),
+  const [weekPlans, deviations] = await Promise.all([
     prisma.weekPlan.count({ where: { userId } }),
     prisma.deviation.count({ where: { status: { not: "resolved" } } }),
   ]);
 
   const cards = [
     {
-      title: "Arbeidsoppgaver",
-      description: "Oppgaver som må gjøres",
-
-      countLabel: "åpne oppgaver",
-      href: "/dashboard/oppgaver",
-
-      icon: "📋",
-    },
-    {
-      title: "Ferdige oppgaver",
-      description: "Oppgaver du har fullført",
-
-      countLabel: "fullførte",
-      href: "/dashboard/ferdige",
-
-      icon: "✅",
-    },
-    {
       title: "Ukeplan",
       description: "Planlegg og se ukens aktiviteter",
-      // count: weekPlans,
+      count: weekPlans,
       countLabel: "planlagte aktiviteter",
       href: "/dashboard/ukeplan",
-      // color: "bg-purple-500",
+      color: "bg-purple-500",
       icon: "📅",
     },
     {
@@ -62,9 +42,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">
           Hei, {session?.user?.name?.split(" ")[0]} 👋
         </h1>
-        <p className="text-gray-500 mt-1">
-          Her er en oversikt over arbeidsområdene dine
-        </p>
+        <p className="text-gray-500 mt-1">Her er en oversikt over arbeidsområdene dine</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
