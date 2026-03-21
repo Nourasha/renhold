@@ -2,6 +2,7 @@
 // src/components/ChatView.tsx
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface User {
   id: string;
@@ -23,7 +24,7 @@ interface Props {
   currentUser: { id: string; name: string };
   users: User[];
   initialMessages: Message[];
-  activeConversation: string | null; // null = group chat
+  activeConversation: string | null;
 }
 
 const userColors = [
@@ -44,8 +45,11 @@ function formatTime(dateStr: string | Date) {
   if (isToday) {
     return d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
   }
-  return d.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }) +
-    " " + d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  return (
+    d.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }) +
+    " " +
+    d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 export function ChatView({ currentUser, users, initialMessages, activeConversation }: Props) {
@@ -64,20 +68,55 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Poll for new messages every 3 seconds
+  // ── Supabase Realtime — replace polling ──
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const url = activeConversation
-        ? `/api/messages?with=${activeConversation}`
-        : "/api/messages";
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data.messages);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [activeConversation]);
+    const channel = supabase
+      .channel("messages-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
+        async (payload) => {
+          const newMsg = payload.new as any;
+
+          // Check if this message belongs to current conversation
+          const isGroupMsg = !newMsg.receiverId && !activeConversation;
+          const isPrivateMsg =
+            activeConversation &&
+            ((newMsg.senderId === activeConversation && newMsg.receiverId === currentUser.id) ||
+              (newMsg.senderId === currentUser.id && newMsg.receiverId === activeConversation));
+
+          if (!isGroupMsg && !isPrivateMsg) return;
+
+          // Fetch full message with sender info
+          const res = await fetch(
+            activeConversation
+              ? `/api/messages?with=${activeConversation}`
+              : "/api/messages"
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setMessages(data.messages);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "Message" },
+        (payload) => {
+          setMessages((prev) => prev.filter((m) => m.id !== (payload.old as any).id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeConversation, currentUser.id]);
+
+  // Reset messages when conversation changes
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   async function sendMessage() {
     if (!input.trim() || sending) return;
@@ -93,17 +132,16 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
     });
 
     if (res.ok) {
-      const data = await res.json();
-      setMessages((prev) => [...prev, data.message]);
       setInput("");
+      // Realtime will handle adding the message to the list
     }
     setSending(false);
   }
 
   async function deleteMessage(id: string) {
     if (!confirm("Slett denne meldingen?")) return;
-    const res = await fetch(`/api/messages/${id}`, { method: "DELETE" });
-    if (res.ok) setMessages((prev) => prev.filter((m) => m.id !== id));
+    await fetch(`/api/messages/${id}`, { method: "DELETE" });
+    // Realtime DELETE event will handle removing from list
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -116,7 +154,7 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
   return (
     <div className="flex h-[calc(100vh-80px)] md:h-[calc(100vh-48px)] gap-0 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
 
-      {/* ── Sidebar: conversation list ── */}
+      {/* Conversation list */}
       <div className="w-64 flex-shrink-0 border-r border-gray-200 flex flex-col">
         <div className="px-4 py-3 border-b border-gray-200">
           <h2 className="font-bold text-gray-900">Meldinger</h2>
@@ -164,21 +202,25 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
         </div>
       </div>
 
-      {/* ── Main chat area ── */}
+      {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Chat header */}
+        {/* Header */}
         <div className="px-5 py-3 border-b border-gray-200 flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
             activeUser ? getUserColor(activeUser.id, allUserIds) : "bg-blue-600"
           }`}>
-            {activeUser ? (activeUser.name?.charAt(0).toUpperCase() || "?") : "👥"}
+            {activeUser ? activeUser.name?.charAt(0).toUpperCase() || "?" : "👥"}
           </div>
           <div>
             <p className="font-semibold text-gray-900">{conversationTitle}</p>
             <p className="text-xs text-gray-400">
               {activeUser ? "Privat samtale" : "Gruppemelding til alle"}
             </p>
+          </div>
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-xs text-gray-400">Sanntid</span>
           </div>
         </div>
 
@@ -198,15 +240,13 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
                 key={msg.id}
                 className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
               >
-                {/* Avatar */}
                 {!isMe && (
                   <div className={`w-7 h-7 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
                     {msg.sender.name?.charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
 
-                <div className={`max-w-[70%] group`}>
-                  {/* Sender name (only for others in group chat) */}
+                <div className="max-w-[70%] group">
                   {!isMe && !activeConversation && (
                     <p className="text-xs text-gray-500 mb-1 px-1">
                       {msg.sender.name || "Ukjent"}
@@ -223,7 +263,6 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
                       {formatTime(msg.createdAt)}
                     </p>
 
-                    {/* Delete button */}
                     {isMe && (
                       <button
                         onClick={() => deleteMessage(msg.id)}
@@ -255,7 +294,7 @@ export function ChatView({ currentUser, users, initialMessages, activeConversati
             disabled={!input.trim() || sending}
             className="px-4 py-2.5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-40 transition-colors font-medium text-sm flex-shrink-0"
           >
-            Send
+            {sending ? "..." : "Send"}
           </button>
         </div>
       </div>
