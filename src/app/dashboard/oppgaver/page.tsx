@@ -7,6 +7,7 @@ import { ChecklistBoard } from "@/components/ChecklistBoard";
 export default async function OppgaverPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
+  const isAdmin = (session?.user as any)?.role === "admin";
   const today = new Date().toISOString().split("T")[0];
 
   const groups = await prisma.checklistGroup.findMany({
@@ -37,6 +38,7 @@ export default async function OppgaverPage() {
         initialGroups={groups as any}
         currentUserId={userId}
         today={today}
+        isAdmin={isAdmin}
       />
     </div>
   );
