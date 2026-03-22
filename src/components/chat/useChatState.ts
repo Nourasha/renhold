@@ -9,7 +9,9 @@ interface UseChatStateProps {
 
 export function useChatState({ currentUserId }: UseChatStateProps) {
   const [open, setOpen] = useState(false);
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<string | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -24,59 +26,107 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
 
   // Fetch unread count every 10 seconds
   useEffect(() => {
-    async function fetchUnread() {
-      const res = await fetch("/api/messages/unread");
-      if (res.ok) {
-        const data = await res.json();
-        setUnread(data.count);
-      }
-    }
     fetchUnread();
     const interval = setInterval(fetchUnread, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  async function fetchUnread() {
+    const res = await fetch("/api/messages/unread");
+    if (res.ok) {
+      const data = await res.json();
+      setUnread(data.count);
+    }
+  }
+
+  // Mark all messages in current conversation as read
+  async function markConversationAsRead(
+    conversationId: string | null,
+    msgs: ChatMessage[],
+  ) {
+    const unreadMsgs = msgs.filter((m) => {
+      if (m.senderId === currentUserId) return false;
+      const readBy: string[] = JSON.parse(m.readBy || "[]");
+      return !readBy.includes(currentUserId);
+    });
+
+    await Promise.all(
+      unreadMsgs.map((m) =>
+        fetch(`/api/messages/${m.id}`, { method: "PATCH" }),
+      ),
+    );
+
+    // Refresh unread count from server
+    if (unreadMsgs.length > 0) {
+      await fetchUnread();
+    }
+  }
+
   // Supabase Realtime
   useEffect(() => {
     const channel = supabase
       .channel("floating-chat-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "Message" },
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
         async (payload) => {
           const newMsg = payload.new as any;
           const isGroup = !newMsg.receiverId && !activeConversation;
-          const isPrivate = activeConversation && (
-            (newMsg.senderId === activeConversation && newMsg.receiverId === currentUserId) ||
-            (newMsg.senderId === currentUserId && newMsg.receiverId === activeConversation)
-          );
+          const isPrivate =
+            activeConversation &&
+            ((newMsg.senderId === activeConversation &&
+              newMsg.receiverId === currentUserId) ||
+              (newMsg.senderId === currentUserId &&
+                newMsg.receiverId === activeConversation));
+
           if (!isGroup && !isPrivate) {
-            setUnread((prev) => prev + 1);
+            // Message not in active conversation — update unread
+            if (newMsg.senderId !== currentUserId) {
+              await fetchUnread();
+            }
             return;
           }
-          await loadMessages(activeConversation);
-        }
+
+          // Message in active conversation — load and mark as read
+          const msgs = await loadMessages(activeConversation);
+          if (msgs) await markConversationAsRead(activeConversation, msgs);
+        },
       )
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" },
-        (payload) => setMessages((prev) => prev.filter((m) => m.id !== (payload.old as any).id))
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "Message" },
+        (payload) =>
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== (payload.old as any).id),
+          ),
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeConversation, currentUserId]);
 
-  async function loadMessages(conversationId: string | null) {
-    const url = conversationId ? `/api/messages?with=${conversationId}` : "/api/messages";
+  async function loadMessages(
+    conversationId: string | null,
+  ): Promise<ChatMessage[] | null> {
+    const url = conversationId
+      ? `/api/messages?with=${conversationId}`
+      : "/api/messages";
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       setMessages(data.messages);
+      return data.messages;
     }
+    return null;
   }
 
   async function selectConversation(userId: string | null) {
     setActiveConversation(userId);
     setShowConversations(false);
-    await loadMessages(userId);
-    setUnread(0);
+    const msgs = await loadMessages(userId);
+    if (msgs) await markConversationAsRead(userId, msgs);
   }
 
   async function sendMessage() {
@@ -85,7 +135,10 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: input.trim(), receiverId: activeConversation || null }),
+      body: JSON.stringify({
+        content: input.trim(),
+        receiverId: activeConversation || null,
+      }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -100,14 +153,24 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     if (!open) {
       setShowConversations(true);
       setActiveConversation(null);
-      setUnread(0);
+      fetchUnread();
     }
   }
 
   return {
-    open, activeConversation, messages, input, sending,
-    unread, showConversations, bottomRef,
-    setInput, setShowConversations, setActiveConversation,
-    selectConversation, sendMessage, toggleOpen,
+    open,
+    activeConversation,
+    messages,
+    input,
+    sending,
+    unread,
+    showConversations,
+    bottomRef,
+    setInput,
+    setShowConversations,
+    setActiveConversation,
+    selectConversation,
+    sendMessage,
+    toggleOpen,
   };
 }
