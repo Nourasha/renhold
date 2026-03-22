@@ -9,12 +9,16 @@ interface UseChatStateProps {
 
 export function useChatState({ currentUserId }: UseChatStateProps) {
   const [open, setOpen] = useState(false);
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<string | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [perUserUnread, setPerUserUnread] = useState<Record<string, number>>({});
+  const [perUserUnread, setPerUserUnread] = useState<Record<string, number>>(
+    {},
+  );
   const [groupUnread, setGroupUnread] = useState(0);
   const [showConversations, setShowConversations] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -42,7 +46,10 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   }
 
   // Mark all messages in current conversation as read
-  async function markConversationAsRead(conversationId: string | null, msgs: ChatMessage[]) {
+  async function markConversationAsRead(
+    conversationId: string | null,
+    msgs: ChatMessage[],
+  ) {
     const unreadMsgs = msgs.filter((m) => {
       if (m.senderId === currentUserId) return false;
       const readBy: string[] = JSON.parse(m.readBy || "[]");
@@ -51,8 +58,8 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
 
     await Promise.all(
       unreadMsgs.map((m) =>
-        fetch(`/api/messages/${m.id}`, { method: "PATCH" })
-      )
+        fetch(`/api/messages/${m.id}`, { method: "PATCH" }),
+      ),
     );
 
     // Refresh unread count from server
@@ -65,14 +72,18 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   useEffect(() => {
     const channel = supabase
       .channel("floating-chat-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "Message" },
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
         async (payload) => {
           const newMsg = payload.new as any;
           const isGroup = !newMsg.receiverId && !activeConversation;
-          const isPrivate = activeConversation && (
-            (newMsg.senderId === activeConversation && newMsg.receiverId === currentUserId) ||
-            (newMsg.senderId === currentUserId && newMsg.receiverId === activeConversation)
-          );
+          const isPrivate =
+            activeConversation &&
+            ((newMsg.senderId === activeConversation &&
+              newMsg.receiverId === currentUserId) ||
+              (newMsg.senderId === currentUserId &&
+                newMsg.receiverId === activeConversation));
 
           if (!isGroup && !isPrivate) {
             // Message not in active conversation — update unread
@@ -85,18 +96,29 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
           // Message in active conversation — load and mark as read
           const msgs = await loadMessages(activeConversation);
           if (msgs) await markConversationAsRead(activeConversation, msgs);
-        }
+        },
       )
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" },
-        (payload) => setMessages((prev) => prev.filter((m) => m.id !== (payload.old as any).id))
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "Message" },
+        (payload) =>
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== (payload.old as any).id),
+          ),
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeConversation, currentUserId]);
 
-  async function loadMessages(conversationId: string | null): Promise<ChatMessage[] | null> {
-    const url = conversationId ? `/api/messages?with=${conversationId}` : "/api/messages";
+  async function loadMessages(
+    conversationId: string | null,
+  ): Promise<ChatMessage[] | null> {
+    const url = conversationId
+      ? `/api/messages?with=${conversationId}`
+      : "/api/messages";
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
@@ -109,6 +131,18 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   async function selectConversation(userId: string | null) {
     setActiveConversation(userId);
     setShowConversations(false);
+
+    // Reset count immediately for instant feedback
+    if (userId === null) {
+      setGroupUnread(0);
+      setUnread((prev) => prev - groupUnread);
+    } else {
+      const userCount = perUserUnread[userId] || 0;
+      setPerUserUnread((prev) => ({ ...prev, [userId]: 0 }));
+      setUnread((prev) => Math.max(0, prev - userCount));
+    }
+
+    // Then mark as read in database in background
     const msgs = await loadMessages(userId);
     if (msgs) await markConversationAsRead(userId, msgs);
   }
@@ -119,7 +153,10 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: input.trim(), receiverId: activeConversation || null }),
+      body: JSON.stringify({
+        content: input.trim(),
+        receiverId: activeConversation || null,
+      }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -139,9 +176,21 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   }
 
   return {
-    open, activeConversation, messages, input, sending,
-    unread, perUserUnread, groupUnread, showConversations, bottomRef,
-    setInput, setShowConversations, setActiveConversation,
-    selectConversation, sendMessage, toggleOpen,
+    open,
+    activeConversation,
+    messages,
+    input,
+    sending,
+    unread,
+    perUserUnread,
+    groupUnread,
+    showConversations,
+    bottomRef,
+    setInput,
+    setShowConversations,
+    setActiveConversation,
+    selectConversation,
+    sendMessage,
+    toggleOpen,
   };
 }
