@@ -19,14 +19,13 @@ export default withAuth(
     callbacks: {
       authorized({ token, req }) {
         const { pathname } = req.nextUrl;
+
         if (pathname.startsWith("/dashboard")) {
           return !!token;
         }
+
         return true;
       },
-    },
-    pages: {
-      signIn: "/login",
     },
   },
 );
