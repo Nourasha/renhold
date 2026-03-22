@@ -3,5 +3,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
   },
+  experimental: {
+    trustHostHeader: true,
+  },
 };
 module.exports = nextConfig;
