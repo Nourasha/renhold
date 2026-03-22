@@ -16,7 +16,7 @@ export function FloatingChat({ currentUser, users }: Props) {
 
   const {
     open, activeConversation, messages, input, sending,
-    unread, showConversations, bottomRef,
+    unread, perUserUnread, groupUnread, showConversations, bottomRef,
     setInput, setShowConversations, setActiveConversation,
     selectConversation, sendMessage, toggleOpen,
   } = useChatState({ currentUserId: currentUser.id });
@@ -46,6 +46,8 @@ export function FloatingChat({ currentUser, users }: Props) {
           bottomRef={bottomRef}
           activeConversation={activeConversation}
           currentUserId={currentUser.id}
+          perUserUnread={perUserUnread}
+          groupUnread={groupUnread}
           onBack={() => { setShowConversations(true); setActiveConversation(null); }}
           onClose={toggleOpen}
           onSelectConversation={selectConversation}

@@ -13,6 +13,8 @@ interface Props {
   bottomRef: RefObject<HTMLDivElement>;
   activeConversation: string | null;
   currentUserId: string;
+  perUserUnread: Record<string, number>;
+  groupUnread: number;
   onBack: () => void;
   onClose: () => void;
   onSelectConversation: (id: string | null) => void;
@@ -24,7 +26,7 @@ interface Props {
 export function ChatWindow({
   showConversations, conversationTitle, users, allUserIds,
   messages, input, sending, bottomRef, activeConversation,
-  currentUserId, onBack, onClose, onSelectConversation,
+  currentUserId, perUserUnread, groupUnread, onBack, onClose, onSelectConversation,
   onInputChange, onSend, onKeyDown,
 }: Props) {
   return (
@@ -62,10 +64,15 @@ export function ChatWindow({
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 text-left"
           >
             <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-base flex-shrink-0">👥</div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Alle</p>
               <p className="text-xs text-gray-400">Gruppemelding</p>
             </div>
+            {groupUnread > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {groupUnread}
+              </span>
+            )}
           </button>
           {users.map((user) => (
             <button
@@ -76,10 +83,15 @@ export function ChatWindow({
               <div className={`w-9 h-9 rounded-full ${getUserColor(user.id, allUserIds)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
                 {user.name?.charAt(0).toUpperCase() || "?"}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">{user.name || user.email}</p>
                 <p className="text-xs text-gray-400">Privat</p>
               </div>
+              {perUserUnread[user.id] > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {perUserUnread[user.id]}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -97,16 +109,20 @@ export function ChatWindow({
             )}
             {messages.map((msg) => {
               const isMe = msg.senderId === currentUserId;
+              // Fallback: look up sender from users list if msg.sender is missing
+              const senderName = msg.sender?.name
+                || users.find((u) => u.id === msg.senderId)?.name
+                || "Ukjent";
               return (
                 <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                   {!isMe && (
                     <div className={`w-6 h-6 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-                      {msg.sender.name?.charAt(0).toUpperCase() || "?"}
+                      {senderName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="max-w-[75%]">
                     {!isMe && !activeConversation && (
-                      <p className="text-xs text-gray-400 mb-0.5 px-1">{msg.sender.name}</p>
+                      <p className="text-xs text-gray-400 mb-0.5 px-1">{senderName}</p>
                     )}
                     <div className={`px-3 py-2 rounded-2xl text-sm ${isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"}`}>
                       <p className="whitespace-pre-wrap break-words">{msg.content}</p>
