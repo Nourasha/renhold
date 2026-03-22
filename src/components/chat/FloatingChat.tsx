@@ -1,7 +1,6 @@
 "use client";
-// src/components/chat/FloatingChat.tsx
-import { useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+
+import { useEffect, useRef } from "react";
 import { ChatUser } from "./types";
 import { useChatState } from "./useChatState";
 import { ChatWindow } from "./ChatWindow";
@@ -13,38 +12,102 @@ interface Props {
 }
 
 export function FloatingChat({ currentUser, users }: Props) {
+  const handledRef = useRef(false);
+
   const allUserIds = [currentUser.id, ...users.map((u) => u.id)];
-  const activeUser = (userId: string | null) => users.find((u) => u.id === userId);
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const activeUser = (userId: string | null) =>
+    users.find((u) => u.id === userId);
 
   const {
-    open, activeConversation, messages, input, sending,
-    unread, perUserUnread, groupUnread, showConversations, bottomRef,
-    setInput, setShowConversations, setActiveConversation,
-    selectConversation, sendMessage, toggleOpen,
+    open,
+    activeConversation,
+    messages,
+    input,
+    sending,
+    unread,
+    perUserUnread,
+    groupUnread,
+    showConversations,
+    bottomRef,
+    setInput,
+    setShowConversations,
+    setActiveConversation,
+    selectConversation,
+    sendMessage,
+    toggleOpen,
   } = useChatState({ currentUserId: currentUser.id });
 
-  // Open chat from push notification query params
   useEffect(() => {
-    const chat = searchParams.get("chat");
-    const userId = searchParams.get("userId");
+    if (handledRef.current) return;
 
-    if (chat === "open") {
-      toggleOpen();
-      if (userId) {
-        setTimeout(() => {
-          selectConversation(userId);
-        }, 300);
+    const params = new URLSearchParams(window.location.search);
+    const chat = params.get("chat");
+    const userId = params.get("userId");
+
+    if (chat !== "open") return;
+    handledRef.current = true;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 6;
+
+    const cleanupUrl = () => {
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.delete("chat");
+      nextParams.delete("userId");
+
+      const nextQuery = nextParams.toString();
+      const nextUrl = nextQuery ? `/dashboard?${nextQuery}` : "/dashboard";
+      window.history.replaceState({}, "", nextUrl);
+    };
+
+    const tryOpen = async () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      if (!open) {
+        toggleOpen();
+        setTimeout(tryOpen, 250);
+        return;
       }
-      // Clean URL without reload
-      router.replace("/dashboard");
-    }
-  }, []);
 
-  const conversationTitle = activeUser(activeConversation)?.name
-    || activeUser(activeConversation)?.email
-    || "Alle";
+      if (userId) {
+        try {
+          await selectConversation(userId);
+        } catch {
+          // prøv igjen
+        }
+
+        if (activeConversation !== userId && attempts < maxAttempts) {
+          setTimeout(tryOpen, 350);
+          return;
+        }
+      } else {
+        setShowConversations(true);
+        setActiveConversation(null);
+      }
+
+      cleanupUrl();
+    };
+
+    setTimeout(tryOpen, 250);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    activeConversation,
+    toggleOpen,
+    selectConversation,
+    setShowConversations,
+    setActiveConversation,
+  ]);
+
+  const conversationTitle =
+    activeUser(activeConversation)?.name ||
+    activeUser(activeConversation)?.email ||
+    "Alle";
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -69,7 +132,10 @@ export function FloatingChat({ currentUser, users }: Props) {
           currentUserId={currentUser.id}
           perUserUnread={perUserUnread}
           groupUnread={groupUnread}
-          onBack={() => { setShowConversations(true); setActiveConversation(null); }}
+          onBack={() => {
+            setShowConversations(true);
+            setActiveConversation(null);
+          }}
           onClose={toggleOpen}
           onSelectConversation={selectConversation}
           onInputChange={setInput}
