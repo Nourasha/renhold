@@ -5,27 +5,26 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
-  // No adapter needed — using JWT strategy only
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 30 * 24 * 60 * 60, // 30 dager
+    updateAge: 24 * 60 * 60, // Oppdater token hver dag
   },
   jwt: {
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 dager
   },
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: "next-auth.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
         secure: true,
-        maxAge: 7 * 24 * 60 * 60, // 7 days
+        maxAge: 30 * 24 * 60 * 60, // 30 dager
       },
     },
   },
-
   providers: [
     CredentialsProvider({
       name: "credentials",
