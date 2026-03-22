@@ -1,21 +1,25 @@
 // public/sw.js
-const CACHE_NAME = "textilia-v3";
+const CACHE_NAME = "textilia-v4";
 const STATIC_ASSETS = ["/", "/login", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key)),
+        ),
+      ),
   );
   self.clients.claim();
 });
@@ -35,8 +39,8 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match("/"))
-      )
+        caches.match(request).then((cached) => cached || caches.match("/")),
+      ),
   );
 });
 
@@ -64,17 +68,22 @@ self.addEventListener("notificationclick", (event) => {
   const fullUrl = self.location.origin + relativePath;
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // If app is already open — focus and navigate
-      for (const client of clientList) {
-        if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          client.focus();
-          if ("navigate" in client) client.navigate(fullUrl);
-          return;
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // If app is already open — focus and navigate
+        for (const client of clientList) {
+          if (
+            client.url.startsWith(self.location.origin) &&
+            "focus" in client
+          ) {
+            client.focus();
+            if ("navigate" in client) client.navigate(fullUrl);
+            return;
+          }
         }
-      }
-      // App is closed — open it at root, it will redirect correctly
-      if (clients.openWindow) return clients.openWindow(fullUrl);
-    })
+        // App is closed — open it at root, it will redirect correctly
+        if (clients.openWindow) return clients.openWindow(fullUrl);
+      }),
   );
 });
