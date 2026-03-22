@@ -45,7 +45,6 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     }
   }
 
-  // Mark all messages in current conversation as read
   async function markConversationAsRead(
     conversationId: string | null,
     msgs: ChatMessage[],
@@ -62,10 +61,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       ),
     );
 
-    // Refresh unread count from server
-    if (unreadMsgs.length > 0) {
-      await fetchUnread();
-    }
+    if (unreadMsgs.length > 0) await fetchUnread();
   }
 
   // Supabase Realtime
@@ -86,14 +82,11 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
                 newMsg.receiverId === activeConversation));
 
           if (!isGroup && !isPrivate) {
-            // Message not in active conversation — update unread
-            if (newMsg.senderId !== currentUserId) {
-              await fetchUnread();
-            }
+            if (newMsg.senderId !== currentUserId) await fetchUnread();
             return;
           }
 
-          // Message in active conversation — load and mark as read
+          // Load full messages from API (includes sender info)
           const msgs = await loadMessages(activeConversation);
           if (msgs) await markConversationAsRead(activeConversation, msgs);
         },
@@ -132,17 +125,16 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     setActiveConversation(userId);
     setShowConversations(false);
 
-    // Reset count immediately for instant feedback
+    // Reset count immediately
     if (userId === null) {
       setGroupUnread(0);
-      setUnread((prev) => prev - groupUnread);
+      setUnread((prev) => Math.max(0, prev - groupUnread));
     } else {
       const userCount = perUserUnread[userId] || 0;
       setPerUserUnread((prev) => ({ ...prev, [userId]: 0 }));
       setUnread((prev) => Math.max(0, prev - userCount));
     }
 
-    // Then mark as read in database in background
     const msgs = await loadMessages(userId);
     if (msgs) await markConversationAsRead(userId, msgs);
   }
@@ -160,9 +152,18 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     });
     if (res.ok) {
       setInput("");
-      // Don't add locally — Realtime will handle it
+      // Don't add locally — Realtime handles it for everyone including sender
     }
     setSending(false);
+  }
+
+  function toggleOpen() {
+    setOpen((prev) => !prev);
+    if (!open) {
+      setShowConversations(true);
+      setActiveConversation(null);
+      fetchUnread();
+    }
   }
 
   return {
