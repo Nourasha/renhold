@@ -159,20 +159,10 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       }),
     });
     if (res.ok) {
-      const data = await res.json();
-      setMessages((prev) => [...prev, data.message]);
       setInput("");
+      // Don't add locally — Realtime will handle it
     }
     setSending(false);
-  }
-
-  function toggleOpen() {
-    setOpen((prev) => !prev);
-    if (!open) {
-      setShowConversations(true);
-      setActiveConversation(null);
-      fetchUnread();
-    }
   }
 
   return {
