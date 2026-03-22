@@ -1,9 +1,19 @@
+// src/components/chat/useChatState.ts
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { ChatMessage } from "./types";
 
 interface UseChatStateProps {
   currentUserId: string;
+}
+
+function safeParseReadBy(value: string | null | undefined): string[] {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export function useChatState({ currentUserId }: UseChatStateProps) {
@@ -22,18 +32,20 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   const [showConversations, setShowConversations] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const activeConversationRef = useRef<string | null>(activeConversation);
+  // Stable refs to avoid subscription churn / stale closures
   const openRef = useRef(open);
+  const activeConversationRef = useRef(activeConversation);
   const showConversationsRef = useRef(showConversations);
-  const unreadFetchInFlightRef = useRef(false);
-
-  useEffect(() => {
-    activeConversationRef.current = activeConversation;
-  }, [activeConversation]);
+  const fetchingUnreadRef = useRef(false);
+  const latestLoadTokenRef = useRef(0);
 
   useEffect(() => {
     openRef.current = open;
   }, [open]);
+
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
 
   useEffect(() => {
     showConversationsRef.current = showConversations;
@@ -43,10 +55,34 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const fetchUnread = useCallback(async () => {
-    if (unreadFetchInFlightRef.current) return;
+  const updateAppBadge = useCallback((count: number) => {
+    const nav = navigator as Navigator & {
+      setAppBadge?: (count?: number) => Promise<void> | void;
+      clearAppBadge?: () => Promise<void> | void;
+    };
 
-    unreadFetchInFlightRef.current = true;
+    if (
+      typeof nav.setAppBadge !== "function" ||
+      typeof nav.clearAppBadge !== "function"
+    ) {
+      return;
+    }
+
+    try {
+      if (count > 0) {
+        nav.setAppBadge(count);
+      } else {
+        nav.clearAppBadge();
+      }
+    } catch {
+      // ignore unsupported/runtime badge errors
+    }
+  }, []);
+
+  const fetchUnread = useCallback(async () => {
+    if (fetchingUnreadRef.current) return;
+
+    fetchingUnreadRef.current = true;
     try {
       const res = await fetch("/api/messages/unread", {
         method: "GET",
@@ -56,18 +92,24 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       if (!res.ok) return;
 
       const data = await res.json();
-      setUnread(Number(data.count || 0));
-      setPerUserUnread(data.perUser || {});
-      setGroupUnread(Number(data.group || 0));
+      const count = Number(data.count || 0);
+      const perUser = data.perUser || {};
+      const group = Number(data.group || 0);
+
+      setUnread(count);
+      setPerUserUnread(perUser);
+      setGroupUnread(group);
+      updateAppBadge(count);
     } catch {
-      // ignore transient mobile/network errors
+      // ignore transient network/app resume issues
     } finally {
-      unreadFetchInFlightRef.current = false;
+      fetchingUnreadRef.current = false;
     }
-  }, []);
+  }, [updateAppBadge]);
 
   const loadMessages = useCallback(
     async (conversationId: string | null): Promise<ChatMessage[] | null> => {
+      const token = ++latestLoadTokenRef.current;
       const url = conversationId
         ? `/api/messages?with=${conversationId}`
         : "/api/messages";
@@ -81,8 +123,15 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         if (!res.ok) return null;
 
         const data = await res.json();
-        setMessages(data.messages || []);
-        return data.messages || [];
+        const nextMessages: ChatMessage[] = data.messages || [];
+
+        // Ignore stale responses from older requests
+        if (token !== latestLoadTokenRef.current) {
+          return nextMessages;
+        }
+
+        setMessages(nextMessages);
+        return nextMessages;
       } catch {
         return null;
       }
@@ -91,16 +140,11 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   );
 
   const markConversationAsRead = useCallback(
-    async (conversationId: string | null, msgs: ChatMessage[]) => {
+    async (msgs: ChatMessage[]) => {
       const unreadMsgs = msgs.filter((m) => {
         if (m.senderId === currentUserId) return false;
-
-        try {
-          const readBy: string[] = JSON.parse(m.readBy || "[]");
-          return !readBy.includes(currentUserId);
-        } catch {
-          return true;
-        }
+        const readBy = safeParseReadBy(m.readBy);
+        return !readBy.includes(currentUserId);
       });
 
       if (unreadMsgs.length === 0) return;
@@ -114,7 +158,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
           ),
         );
       } catch {
-        // ignore patch failure here; next refresh/realtime sync can recover
+        // ignore; next sync will correct counters
       }
 
       await fetchUnread();
@@ -127,9 +171,9 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
 
     const interval = setInterval(() => {
       fetchUnread();
-    }, 5000);
+    }, 10000);
 
-    const handleVisibilityChange = () => {
+    const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         fetchUnread();
       }
@@ -139,13 +183,13 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       fetchUnread();
     };
 
+    document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [fetchUnread]);
 
@@ -158,41 +202,46 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         async (payload) => {
           const newMsg = payload.new as {
             id: string;
+            content: string;
             senderId: string;
             receiverId: string | null;
-            content: string;
             createdAt: string;
-            readBy?: string;
+            readBy: string;
+            sender?: { id: string; name: string | null };
           };
 
           if (!newMsg || newMsg.senderId === currentUserId) return;
 
-          const currentActiveConversation = activeConversationRef.current;
-          const isOpen = openRef.current;
-          const isShowingConversationList = showConversationsRef.current;
+          const currentOpen = openRef.current;
+          const currentConversation = activeConversationRef.current;
+          const currentShowConversations = showConversationsRef.current;
 
           const isGroupMessage = !newMsg.receiverId;
-          const isCurrentGroupView = currentActiveConversation === null;
-          const isCurrentPrivateView =
-            !!currentActiveConversation &&
-            newMsg.senderId === currentActiveConversation &&
+          const isActiveGroup = currentConversation === null;
+          const isActivePrivate =
+            !!currentConversation &&
+            newMsg.senderId === currentConversation &&
             newMsg.receiverId === currentUserId;
 
-          const isMessageVisibleInOpenChat =
-            isOpen &&
-            !isShowingConversationList &&
-            ((isGroupMessage && isCurrentGroupView) || isCurrentPrivateView);
+          const isMessageInVisibleChat =
+            currentOpen &&
+            !currentShowConversations &&
+            ((isGroupMessage && isActiveGroup) || isActivePrivate);
 
-          if (isMessageVisibleInOpenChat) {
-            const msgs = await loadMessages(currentActiveConversation);
+          if (isMessageInVisibleChat) {
+            const msgs = await loadMessages(currentConversation);
             if (msgs) {
-              await markConversationAsRead(currentActiveConversation, msgs);
+              await markConversationAsRead(msgs);
             }
             return;
           }
 
-          // Optimistic local update so the badge reacts instantly
-          setUnread((prev) => prev + 1);
+          // Fast local badge reaction
+          setUnread((prev) => {
+            const next = prev + 1;
+            updateAppBadge(next);
+            return next;
+          });
 
           if (isGroupMessage) {
             setGroupUnread((prev) => prev + 1);
@@ -203,19 +252,19 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
             }));
           }
 
-          // Then sync from server so counts stay correct
+          // Then sync with backend truth
           await fetchUnread();
         },
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "Message" },
-        (payload) => {
+        async (payload) => {
           const deletedId = (payload.old as { id?: string })?.id;
           if (!deletedId) return;
 
           setMessages((prev) => prev.filter((m) => m.id !== deletedId));
-          fetchUnread();
+          await fetchUnread();
         },
       )
       .subscribe();
@@ -223,59 +272,119 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, fetchUnread, loadMessages, markConversationAsRead]);
+  }, [
+    currentUserId,
+    fetchUnread,
+    loadMessages,
+    markConversationAsRead,
+    updateAppBadge,
+  ]);
 
   const selectConversation = useCallback(
     async (userId: string | null) => {
       setActiveConversation(userId);
+      activeConversationRef.current = userId;
       setShowConversations(false);
+      showConversationsRef.current = false;
 
       if (userId === null) {
         setGroupUnread(0);
-        setUnread((prev) => Math.max(0, prev - groupUnread));
+        setUnread((prev) => {
+          const next = Math.max(0, prev - groupUnread);
+          updateAppBadge(next);
+          return next;
+        });
       } else {
         const userCount = perUserUnread[userId] || 0;
         setPerUserUnread((prev) => ({ ...prev, [userId]: 0 }));
-        setUnread((prev) => Math.max(0, prev - userCount));
+        setUnread((prev) => {
+          const next = Math.max(0, prev - userCount);
+          updateAppBadge(next);
+          return next;
+        });
       }
 
       const msgs = await loadMessages(userId);
       if (msgs) {
-        await markConversationAsRead(userId, msgs);
+        await markConversationAsRead(msgs);
       }
     },
-    [groupUnread, perUserUnread, loadMessages, markConversationAsRead],
+    [
+      groupUnread,
+      perUserUnread,
+      loadMessages,
+      markConversationAsRead,
+      updateAppBadge,
+    ],
   );
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || sending) return;
+    const content = input.trim();
+    if (!content || sending) return;
+
+    const conversationAtSend = activeConversationRef.current;
 
     setSending(true);
+    setInput("");
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      content,
+      senderId: currentUserId,
+      receiverId: conversationAtSend || null,
+      createdAt: new Date().toISOString(),
+      readBy: JSON.stringify([currentUserId]),
+      sender: {
+        id: currentUserId,
+        name: null,
+      },
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: input.trim(),
-          receiverId: activeConversation || null,
+          content,
+          receiverId: conversationAtSend || null,
         }),
       });
 
-      if (res.ok) {
-        setInput("");
+      if (!res.ok) {
+        throw new Error("Failed to send message");
       }
+
+      const data = await res.json();
+      const realMessage: ChatMessage = data.message;
+
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === realMessage.id);
+        if (exists) {
+          return prev.filter((m) => m.id !== tempId);
+        }
+        return prev.map((m) => (m.id === tempId ? realMessage : m));
+      });
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setInput(content);
     } finally {
       setSending(false);
     }
-  }, [input, sending, activeConversation]);
+  }, [input, sending, currentUserId]);
 
   const toggleOpen = useCallback(() => {
     setOpen((prev) => {
       const next = !prev;
+      openRef.current = next;
 
       if (next) {
         setShowConversations(true);
+        showConversationsRef.current = true;
         setActiveConversation(null);
+        activeConversationRef.current = null;
         fetchUnread();
       }
 
