@@ -13,6 +13,18 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     maxAge: 7 * 24 * 60 * 60,
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+      },
+    },
+  },
 
   providers: [
     CredentialsProvider({
