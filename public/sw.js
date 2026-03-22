@@ -67,6 +67,11 @@ self.addEventListener("notificationclick", (event) => {
 
   const path = event.notification.data?.url || "/dashboard";
   const targetUrl = new URL(path, self.location.origin).toString();
+  
+  console.log("[SW] Notification clicked");
+  console.log("[SW] path:", path);
+  console.log("[SW] targetUrl:", targetUrl);
+  console.log("[SW] origin:", self.location.origin);
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

@@ -63,19 +63,19 @@ export async function POST(req: NextRequest) {
 
   // Send push notification
   if (receiverId) {
-    // Private message — notify only receiver
+    // Private message — open chat with sender
     await sendPushToUser(receiverId, {
       title: `💬 Ny melding fra ${senderName}`,
       body: content.trim().slice(0, 80),
-      url: `/dashboard/chat?with=${userId}`,
+      url: `/dashboard?chat=open&userId=${userId}`,
     });
   } else {
-    // Group message — notify all others
+    // Group message — open chat
     await sendPushToAll(
       {
         title: `💬 ${senderName}`,
         body: content.trim().slice(0, 80),
-        url: "/dashboard/chat",
+        url: "/dashboard?chat=open",
       },
       userId
     );

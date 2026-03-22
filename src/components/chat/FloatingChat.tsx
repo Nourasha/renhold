@@ -1,5 +1,7 @@
 "use client";
 // src/components/chat/FloatingChat.tsx
+import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ChatUser } from "./types";
 import { useChatState } from "./useChatState";
 import { ChatWindow } from "./ChatWindow";
@@ -13,6 +15,8 @@ interface Props {
 export function FloatingChat({ currentUser, users }: Props) {
   const allUserIds = [currentUser.id, ...users.map((u) => u.id)];
   const activeUser = (userId: string | null) => users.find((u) => u.id === userId);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const {
     open, activeConversation, messages, input, sending,
@@ -20,6 +24,23 @@ export function FloatingChat({ currentUser, users }: Props) {
     setInput, setShowConversations, setActiveConversation,
     selectConversation, sendMessage, toggleOpen,
   } = useChatState({ currentUserId: currentUser.id });
+
+  // Open chat from push notification query params
+  useEffect(() => {
+    const chat = searchParams.get("chat");
+    const userId = searchParams.get("userId");
+
+    if (chat === "open") {
+      toggleOpen();
+      if (userId) {
+        setTimeout(() => {
+          selectConversation(userId);
+        }, 300);
+      }
+      // Clean URL without reload
+      router.replace("/dashboard");
+    }
+  }, []);
 
   const conversationTitle = activeUser(activeConversation)?.name
     || activeUser(activeConversation)?.email
