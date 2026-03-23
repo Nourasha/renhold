@@ -1,25 +1,32 @@
 // src/components/completed/ChecklistFilters.tsx
+import { formatDate } from "./types";
 
 interface Props {
   filterUser: string;
   filterWeek: string;
+  filterDate: string;
   allUsers: [string, string][];
   allWeekKeys: string[];
+  allDates: string[];
   onUserChange: (v: string) => void;
   onWeekChange: (v: string) => void;
+  onDateChange: (v: string) => void;
   onReset: () => void;
 }
 
 export function ChecklistFilters({
   filterUser,
   filterWeek,
+  filterDate,
   allUsers,
   allWeekKeys,
+  allDates,
   onUserChange,
   onWeekChange,
+  onDateChange,
   onReset,
 }: Props) {
-  const hasFilter = filterUser || filterWeek;
+  const hasFilter = filterUser || filterWeek || filterDate;
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -51,6 +58,19 @@ export function ChecklistFilters({
             </option>
           );
         })}
+      </select>
+
+      <select
+        value={filterDate}
+        onChange={(e) => onDateChange(e.target.value)}
+        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Alle datoer</option>
+        {allDates.map((d) => (
+          <option key={d} value={d}>
+            {formatDate(d)}
+          </option>
+        ))}
       </select>
 
       {hasFilter && (
