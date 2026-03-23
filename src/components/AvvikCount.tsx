@@ -28,8 +28,6 @@ export function AvvikCount({ initialCount }: { initialCount: number }) {
     return () => clearInterval(interval);
   }, []);
 
-  if (count === 0) return null;
-
   return (
     <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
       {count}
