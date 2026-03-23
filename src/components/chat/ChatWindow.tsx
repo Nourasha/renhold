@@ -43,31 +43,82 @@ function getReaderNames(
   });
 }
 
-function renderDeliveryStatus(
-  msg: ChatMessage,
-  users: ChatUser[],
-  currentUserId: string,
-): string {
-  switch (msg.deliveryStatus) {
-    case "sending":
-      return "Sender...";
-    case "failed":
-      return "Feilet";
-    case "sent":
-      return "✓ Sendt";
-    case "read": {
-      const readerNames = getReaderNames(msg, users, currentUserId);
-
-      if (!msg.receiverId) {
-        if (readerNames.length === 0) return "✓ Sendt";
-        return `✓✓ Lest av ${readerNames.join(", ")}`;
-      }
-
-      return "✓✓ Lest";
-    }
-    default:
-      return "";
+function DeliveryStatus({
+  msg,
+  users,
+  currentUserId,
+}: {
+  msg: ChatMessage;
+  users: ChatUser[];
+  currentUserId: string;
+}) {
+  if (msg.deliveryStatus === "sending") {
+    return (
+      <svg className="w-3 h-3 opacity-50" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    );
   }
+
+  if (msg.deliveryStatus === "failed") {
+    return <span className="text-red-300 text-xs">!</span>;
+  }
+
+  if (msg.deliveryStatus === "sent") {
+    return (
+      <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+        <path
+          d="M1 6L4.5 9.5L10 4"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.55"
+        />
+        <path
+          d="M7 6L10.5 9.5L16 4"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.55"
+        />
+      </svg>
+    );
+  }
+
+  if (msg.deliveryStatus === "read") {
+    const readerNames = getReaderNames(msg, users, currentUserId);
+    const isGroup = !msg.receiverId;
+    const label =
+      isGroup && readerNames.length > 0
+        ? `Lest av ${readerNames.join(", ")}`
+        : undefined;
+
+    return (
+      <span className="flex items-center gap-1">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+          <path
+            d="M1 6L4.5 9.5L10 4"
+            stroke="#53BDEB"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M7 6L10.5 9.5L16 4"
+            stroke="#53BDEB"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {label && <span className="text-[#53BDEB]">{label}</span>}
+      </span>
+    );
+  }
+
+  return null;
 }
 
 export function ChatWindow({
@@ -247,9 +298,11 @@ export function ChatWindow({
                         <span>{formatTime(msg.createdAt)}</span>
 
                         {isMe && msg.deliveryStatus && (
-                          <span>
-                            {renderDeliveryStatus(msg, users, currentUserId)}
-                          </span>
+                          <DeliveryStatus
+                            msg={msg}
+                            users={users}
+                            currentUserId={currentUserId}
+                          />
                         )}
                       </div>
                     </div>

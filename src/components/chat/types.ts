@@ -14,7 +14,7 @@ export interface ChatMessage {
   createdAt: string | Date;
   readBy: string;
   sender: { id: string; name: string | null };
-  deliveryStatus?: "sending" | "sent" | "read" | "failed";
+  deliveryStatus?: "sending" | "sent" | "delivered" | "read" | "failed";
 }
 
 export const userColors = [
