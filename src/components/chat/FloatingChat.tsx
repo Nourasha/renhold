@@ -1,5 +1,6 @@
 "use client";
 
+// src/components/chat/FloatingChat.tsx
 import { useEffect, useRef } from "react";
 import { ChatUser } from "./types";
 import { useChatState } from "./useChatState";
@@ -12,7 +13,9 @@ interface Props {
 }
 
 export function FloatingChat({ currentUser, users }: Props) {
-  const handledRef = useRef(false);
+  const handledNotificationRef = useRef(false);
+  const openRef = useRef(false);
+  const activeConversationRef = useRef<string | null>(null);
 
   const allUserIds = [currentUser.id, ...users.map((u) => u.id)];
   const activeUser = (userId: string | null) =>
@@ -38,18 +41,26 @@ export function FloatingChat({ currentUser, users }: Props) {
   } = useChatState({ currentUserId: currentUser.id });
 
   useEffect(() => {
-    if (handledRef.current) return;
+    openRef.current = open;
+  }, [open]);
 
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const chat = params.get("chat");
     const userId = params.get("userId");
 
     if (chat !== "open") return;
-    handledRef.current = true;
+    if (handledNotificationRef.current) return;
+
+    handledNotificationRef.current = true;
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 8;
 
     const cleanupUrl = () => {
       const nextParams = new URLSearchParams(window.location.search);
@@ -61,13 +72,19 @@ export function FloatingChat({ currentUser, users }: Props) {
       window.history.replaceState({}, "", nextUrl);
     };
 
-    const tryOpen = async () => {
+    const tryOpenFromNotification = async () => {
       if (cancelled) return;
+
       attempts += 1;
 
-      if (!open) {
+      if (!openRef.current) {
         toggleOpen();
-        setTimeout(tryOpen, 250);
+
+        if (attempts < maxAttempts) {
+          setTimeout(tryOpenFromNotification, 250);
+        } else {
+          cleanupUrl();
+        }
         return;
       }
 
@@ -75,11 +92,14 @@ export function FloatingChat({ currentUser, users }: Props) {
         try {
           await selectConversation(userId);
         } catch {
-          // prøv igjen
+          // retry below
         }
 
-        if (activeConversation !== userId && attempts < maxAttempts) {
-          setTimeout(tryOpen, 350);
+        if (
+          activeConversationRef.current !== userId &&
+          attempts < maxAttempts
+        ) {
+          setTimeout(tryOpenFromNotification, 350);
           return;
         }
       } else {
@@ -90,14 +110,13 @@ export function FloatingChat({ currentUser, users }: Props) {
       cleanupUrl();
     };
 
-    setTimeout(tryOpen, 250);
+    const timer = setTimeout(tryOpenFromNotification, 250);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [
-    open,
-    activeConversation,
     toggleOpen,
     selectConversation,
     setShowConversations,
@@ -143,6 +162,7 @@ export function FloatingChat({ currentUser, users }: Props) {
           onKeyDown={handleKeyDown}
         />
       )}
+
       <ChatBubbleButton open={open} unread={unread} onClick={toggleOpen} />
     </div>
   );
