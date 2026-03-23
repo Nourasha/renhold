@@ -32,7 +32,6 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
   const [showConversations, setShowConversations] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Stable refs to avoid subscription churn / stale closures
   const openRef = useRef(open);
   const activeConversationRef = useRef(activeConversation);
   const showConversationsRef = useRef(showConversations);
@@ -75,8 +74,30 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         nav.clearAppBadge();
       }
     } catch {
-      // ignore unsupported/runtime badge errors
+      // ignore
     }
+  }, []);
+
+  const notifyServiceWorkerCloseChatNotifications = useCallback(
+    (userId: string | null) => {
+      if (!("serviceWorker" in navigator)) return;
+      if (!navigator.serviceWorker.controller) return;
+
+      navigator.serviceWorker.controller.postMessage({
+        type: "CLOSE_CHAT_NOTIFICATIONS",
+        userId,
+      });
+    },
+    [],
+  );
+
+  const notifyServiceWorkerCloseAllChatNotifications = useCallback(() => {
+    if (!("serviceWorker" in navigator)) return;
+    if (!navigator.serviceWorker.controller) return;
+
+    navigator.serviceWorker.controller.postMessage({
+      type: "CLOSE_ALL_CHAT_NOTIFICATIONS",
+    });
   }, []);
 
   const fetchUnread = useCallback(async () => {
@@ -101,7 +122,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       setGroupUnread(group);
       updateAppBadge(count);
     } catch {
-      // ignore transient network/app resume issues
+      // ignore
     } finally {
       fetchingUnreadRef.current = false;
     }
@@ -125,7 +146,6 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         const data = await res.json();
         const nextMessages: ChatMessage[] = data.messages || [];
 
-        // Ignore stale responses from older requests
         if (token !== latestLoadTokenRef.current) {
           return nextMessages;
         }
@@ -158,7 +178,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
           ),
         );
       } catch {
-        // ignore; next sync will correct counters
+        // ignore
       }
 
       await fetchUnread();
@@ -232,11 +252,16 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
             const msgs = await loadMessages(currentConversation);
             if (msgs) {
               await markConversationAsRead(msgs);
+
+              if (isGroupMessage) {
+                notifyServiceWorkerCloseChatNotifications(null);
+              } else {
+                notifyServiceWorkerCloseChatNotifications(newMsg.senderId);
+              }
             }
             return;
           }
 
-          // Fast local badge reaction
           setUnread((prev) => {
             const next = prev + 1;
             updateAppBadge(next);
@@ -252,7 +277,6 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
             }));
           }
 
-          // Then sync with backend truth
           await fetchUnread();
         },
       )
@@ -277,6 +301,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     fetchUnread,
     loadMessages,
     markConversationAsRead,
+    notifyServiceWorkerCloseChatNotifications,
     updateAppBadge,
   ]);
 
@@ -308,12 +333,15 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       if (msgs) {
         await markConversationAsRead(msgs);
       }
+
+      notifyServiceWorkerCloseChatNotifications(userId);
     },
     [
       groupUnread,
       perUserUnread,
       loadMessages,
       markConversationAsRead,
+      notifyServiceWorkerCloseChatNotifications,
       updateAppBadge,
     ],
   );
@@ -386,11 +414,12 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         setActiveConversation(null);
         activeConversationRef.current = null;
         fetchUnread();
+        notifyServiceWorkerCloseAllChatNotifications();
       }
 
       return next;
     });
-  }, [fetchUnread]);
+  }, [fetchUnread, notifyServiceWorkerCloseAllChatNotifications]);
 
   return {
     open,
