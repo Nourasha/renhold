@@ -7,14 +7,17 @@ export function AvvikCount({ initialCount }: { initialCount: number }) {
 
   useEffect(() => {
     async function fetchCount() {
-      const res = await fetch("/api/avvik/count");
+      const res = await fetch("/api/avvik/count", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setCount(data.count);
       }
     }
 
-    const interval = setInterval(fetchCount, 30000); // every 30 seconds
+    // Fetch immediately on mount
+    fetchCount();
+
+    const interval = setInterval(fetchCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
