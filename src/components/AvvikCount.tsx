@@ -1,23 +1,30 @@
 "use client";
-// src/components/AvvikCount.tsx
-import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
 
 export function AvvikCount({ initialCount }: { initialCount: number }) {
   const [count, setCount] = useState(initialCount);
 
   useEffect(() => {
     async function fetchCount() {
-      const res = await fetch("/api/avvik/count", { cache: "no-store" });
-      if (res.ok) {
+      try {
+        const res = await fetch("/api/avvik/count", {
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+
         const data = await res.json();
         setCount(data.count);
+      } catch (error) {
+        console.error("Feil ved henting av avvik-count:", error);
       }
     }
 
-    // Fetch immediately on mount
     fetchCount();
 
     const interval = setInterval(fetchCount, 30000);
+
     return () => clearInterval(interval);
   }, []);
 
