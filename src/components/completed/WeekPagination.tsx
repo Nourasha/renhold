@@ -1,12 +1,19 @@
 // src/components/completed/WeekPagination.tsx
+import { getWeekStart, getWeekEnd } from "./types";
 
 interface Props {
   currentWeekNum: number;
   currentWeekYear: number;
   currentWeekIdx: number;
   totalWeeks: number;
+  currentWeekKey: string;
   onPrev: () => void;
   onNext: () => void;
+}
+
+function formatShort(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${d.getDate()}.${d.getMonth() + 1}`;
 }
 
 export function WeekPagination({
@@ -14,9 +21,22 @@ export function WeekPagination({
   currentWeekYear,
   currentWeekIdx,
   totalWeeks,
+  currentWeekKey,
   onPrev,
   onNext,
 }: Props) {
+  // Get Monday and Sunday of the week
+  // Use the first day of the week by finding a date in that week
+  const weekDate = `${currentWeekYear}-01-01`;
+  const d = new Date(weekDate + "T12:00:00");
+  // Find first day of ISO week
+  d.setDate(1 + (currentWeekNum - 1) * 7);
+  // Adjust to Monday
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  const monday = d.toISOString().split("T")[0];
+  const sunday = new Date(d.getTime() + 6 * 86400000).toISOString().split("T")[0];
+
   return (
     <div className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
       <button
@@ -29,7 +49,7 @@ export function WeekPagination({
       <div className="text-center">
         <p className="font-bold text-gray-900">Uke {currentWeekNum}</p>
         <p className="text-xs text-gray-400">
-          {currentWeekYear} · {currentWeekIdx + 1} av {totalWeeks}
+          {formatShort(monday)} – {formatShort(sunday)} · {currentWeekYear}
         </p>
       </div>
       <button
