@@ -1,11 +1,18 @@
 // src/components/checklist/completedHelpers.ts
-import { Completion, DailyNote, getWeekKey } from "./completed/types";
+import {
+  Completion,
+  DailyNote,
+  getWeekKey,
+} from "@/components/completed/types";
 
 export function groupByDate(filtered: Completion[]) {
-  return filtered.reduce<Record<string, Record<string, Record<string, Completion[]>>>>((acc, c) => {
+  return filtered.reduce<
+    Record<string, Record<string, Record<string, Completion[]>>>
+  >((acc, c) => {
     if (!acc[c.date]) acc[c.date] = {};
     if (!acc[c.date][c.item.group.title]) acc[c.date][c.item.group.title] = {};
-    if (!acc[c.date][c.item.group.title][c.item.label]) acc[c.date][c.item.group.title][c.item.label] = [];
+    if (!acc[c.date][c.item.group.title][c.item.label])
+      acc[c.date][c.item.group.title][c.item.label] = [];
     acc[c.date][c.item.group.title][c.item.label].push(c);
     return acc;
   }, {});
@@ -25,12 +32,16 @@ export function getVisibleDates(
   filterDate: string,
   currentWeekKey: string,
 ) {
-  return Array.from(new Set([
-    ...Object.keys(byDate),
-    ...Object.keys(notesByDate).filter((d) =>
-      filterDate ? d === filterDate : getWeekKey(d) === currentWeekKey
-    ),
-  ])).sort().reverse();
+  return Array.from(
+    new Set([
+      ...Object.keys(byDate),
+      ...Object.keys(notesByDate).filter((d) =>
+        filterDate ? d === filterDate : getWeekKey(d) === currentWeekKey,
+      ),
+    ]),
+  )
+    .sort()
+    .reverse();
 }
 
 export function filterCompletions(
