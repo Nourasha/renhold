@@ -1,5 +1,5 @@
 "use client";
-// src/components/PushPermissionBanner.tsx
+// src/components/notifications/PushPermissionBanner.tsx
 import { useState, useEffect } from "react";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
@@ -15,64 +15,53 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(Array.from(new Uint8Array(buffer)).map((b) => String.fromCharCode(b)).join(""));
 }
 
+async function sendToServer(subscription: PushSubscription) {
+  const key = subscription.getKey("p256dh");
+  const auth = subscription.getKey("auth");
+  if (!key || !auth) return;
+  await fetch("/api/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(key),
+        auth: arrayBufferToBase64(auth),
+      },
+    }),
+  });
+}
+
+async function registerPush() {
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) { await sendToServer(existing); return; }
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    await sendToServer(subscription);
+  } catch (err) {
+    console.error("Push registration failed:", err);
+  }
+}
+
 export function PushPermissionBanner() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (Notification.permission === "granted") {
-      // Already granted — register silently
-      registerPush();
-      return;
-    }
+    if (Notification.permission === "granted") { registerPush(); return; }
     if (Notification.permission === "denied") return;
-    // permission is "default" — show banner
     setShow(true);
   }, []);
-
-  async function registerPush() {
-    try {
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) {
-        await sendToServer(existing);
-        return;
-      }
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      await sendToServer(subscription);
-    } catch (err) {
-      console.error("Push registration failed:", err);
-    }
-  }
-
-  async function sendToServer(subscription: PushSubscription) {
-    const key = subscription.getKey("p256dh");
-    const auth = subscription.getKey("auth");
-    if (!key || !auth) return;
-
-    await fetch("/api/push/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: arrayBufferToBase64(key),
-          auth: arrayBufferToBase64(auth),
-        },
-      }),
-    });
-  }
 
   async function handleAllow() {
     setLoading(true);
     const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      await registerPush();
-    }
+    if (permission === "granted") await registerPush();
     setShow(false);
     setLoading(false);
   }

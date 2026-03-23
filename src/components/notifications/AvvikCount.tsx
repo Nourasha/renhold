@@ -1,5 +1,5 @@
 "use client";
-
+// src/components/notifications/AvvikCount.tsx
 import { useEffect, useState } from "react";
 
 export function AvvikCount({ initialCount }: { initialCount: number }) {
@@ -8,12 +8,8 @@ export function AvvikCount({ initialCount }: { initialCount: number }) {
   useEffect(() => {
     async function fetchCount() {
       try {
-        const res = await fetch("/api/avvik/count", {
-          cache: "no-store",
-        });
-
+        const res = await fetch("/api/avvik/count", { cache: "no-store" });
         if (!res.ok) return;
-
         const data = await res.json();
         setCount(data.count);
       } catch (error) {
@@ -22,9 +18,7 @@ export function AvvikCount({ initialCount }: { initialCount: number }) {
     }
 
     fetchCount();
-
     const interval = setInterval(fetchCount, 30000);
-
     return () => clearInterval(interval);
   }, []);
 

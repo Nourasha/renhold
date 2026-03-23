@@ -1,5 +1,5 @@
 "use client";
-// src/components/AdminInvitePanel.tsx
+// src/components/admin/AdminInvitePanel.tsx
 import { useState } from "react";
 
 interface InviteCodeMeta {
@@ -12,7 +12,6 @@ interface InviteCodeMeta {
 export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMeta[] }) {
   const [codes, setCodes] = useState<InviteCodeMeta[]>(initialCodes);
   const [loading, setLoading] = useState(false);
-  // The freshly generated plain-text code — shown once, then gone
   const [freshCode, setFreshCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -21,7 +20,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
     setFreshCode(null);
     const res = await fetch("/api/admin/invite", { method: "POST" });
     const data = await res.json();
-
     if (res.ok) {
       setFreshCode(data.code);
       setCodes((prev) => [{ id: Date.now().toString(), used: false, createdAt: new Date() }, ...prev]);
@@ -36,10 +34,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function dismissFreshCode() {
-    setFreshCode(null);
-  }
-
   const unusedCount = codes.filter((c) => !c.used).length;
   const usedCodes = codes.filter((c) => c.used);
 
@@ -50,7 +44,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
         <p className="text-sm text-gray-500 mb-4">
           Passkoden krypteres og lagres sikkert. Den vises kun én gang — noter den ned og del med brukeren.
         </p>
-
         <button
           onClick={generateCode}
           disabled={loading}
@@ -59,7 +52,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
           {loading ? "Genererer..." : "🔑 Generer ny passkode"}
         </button>
 
-        {/* One-time code reveal */}
         {freshCode && (
           <div className="mt-4 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl space-y-3">
             <div className="flex items-start gap-2">
@@ -80,7 +72,7 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
               </button>
             </div>
             <button
-              onClick={dismissFreshCode}
+              onClick={() => setFreshCode(null)}
               className="text-xs text-amber-600 hover:text-amber-800 underline"
             >
               Jeg har kopiert koden, lukk denne
@@ -89,7 +81,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
         )}
       </div>
 
-      {/* Stats */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Passkode-oversikt</h2>
         <div className="flex gap-4 flex-wrap mb-4">
@@ -102,7 +93,6 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
             <p className="text-xs text-gray-500">Brukte</p>
           </div>
         </div>
-
         {usedCodes.length > 0 && (
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Brukte koder</p>
