@@ -1,6 +1,12 @@
 // src/components/chat/ChatWindow.tsx
 import { RefObject } from "react";
-import { ChatUser, ChatMessage, getUserColor, formatTime } from "./types";
+import {
+  ChatUser,
+  ChatMessage,
+  getUserColor,
+  formatTime,
+  parseReadBy,
+} from "./types";
 
 interface Props {
   showConversations: boolean;
@@ -23,22 +29,88 @@ interface Props {
   onKeyDown: (e: React.KeyboardEvent) => void;
 }
 
+function getReaderNames(
+  msg: ChatMessage,
+  users: ChatUser[],
+  currentUserId: string,
+): string[] {
+  const readBy = parseReadBy(msg.readBy);
+  const otherReaders = readBy.filter((id) => id !== currentUserId);
+
+  return otherReaders.map((readerId) => {
+    const user = users.find((u) => u.id === readerId);
+    return user?.name || user?.email || "Ukjent";
+  });
+}
+
+function renderDeliveryStatus(
+  msg: ChatMessage,
+  users: ChatUser[],
+  currentUserId: string,
+): string {
+  switch (msg.deliveryStatus) {
+    case "sending":
+      return "Sender...";
+    case "failed":
+      return "Feilet";
+    case "sent":
+      return "✓ Sendt";
+    case "read": {
+      const readerNames = getReaderNames(msg, users, currentUserId);
+
+      if (!msg.receiverId) {
+        if (readerNames.length === 0) return "✓ Sendt";
+        return `✓✓ Lest av ${readerNames.join(", ")}`;
+      }
+
+      return "✓✓ Lest";
+    }
+    default:
+      return "";
+  }
+}
+
 export function ChatWindow({
-  showConversations, conversationTitle, users, allUserIds,
-  messages, input, sending, bottomRef, activeConversation,
-  currentUserId, perUserUnread, groupUnread, onBack, onClose, onSelectConversation,
-  onInputChange, onSend, onKeyDown,
+  showConversations,
+  conversationTitle,
+  users,
+  allUserIds,
+  messages,
+  input,
+  sending,
+  bottomRef,
+  activeConversation,
+  currentUserId,
+  perUserUnread,
+  groupUnread,
+  onBack,
+  onClose,
+  onSelectConversation,
+  onInputChange,
+  onSend,
+  onKeyDown,
 }: Props) {
   return (
     <div className="w-[340px] sm:w-[380px] h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
-
-      {/* Header */}
       <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {!showConversations && (
-            <button onClick={onBack} className="text-white/80 hover:text-white mr-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <button
+              onClick={onBack}
+              className="text-white/80 hover:text-white mr-1"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
           )}
@@ -50,20 +122,31 @@ export function ChatWindow({
           )}
         </div>
         <button onClick={onClose} className="text-white/80 hover:text-white">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
 
-      {/* Conversation list */}
       {showConversations && (
         <div className="flex-1 overflow-y-auto">
           <button
             onClick={() => onSelectConversation(null)}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 text-left"
           >
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-base flex-shrink-0">👥</div>
+            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-base flex-shrink-0">
+              👥
+            </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Alle</p>
               <p className="text-xs text-gray-400">Gruppemelding</p>
@@ -74,17 +157,25 @@ export function ChatWindow({
               </span>
             )}
           </button>
+
           {users.map((user) => (
             <button
               key={user.id}
               onClick={() => onSelectConversation(user.id)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 text-left"
             >
-              <div className={`w-9 h-9 rounded-full ${getUserColor(user.id, allUserIds)} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
+              <div
+                className={`w-9 h-9 rounded-full ${getUserColor(
+                  user.id,
+                  allUserIds,
+                )} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
+              >
                 {user.name?.charAt(0).toUpperCase() || "?"}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{user.name || user.email}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {user.name || user.email}
+                </p>
                 <p className="text-xs text-gray-400">Privat</p>
               </div>
               {perUserUnread[user.id] > 0 && (
@@ -97,7 +188,6 @@ export function ChatWindow({
         </div>
       )}
 
-      {/* Messages */}
       {!showConversations && (
         <>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -107,37 +197,70 @@ export function ChatWindow({
                 <p>Ingen meldinger ennå</p>
               </div>
             )}
+
             {messages.map((msg) => {
               const isMe = msg.senderId === currentUserId;
-              // Fallback: look up sender from users list if msg.sender is missing
-              const senderName = msg.sender?.name
-                || users.find((u) => u.id === msg.senderId)?.name
-                || "Ukjent";
+              const senderName =
+                msg.sender?.name ||
+                users.find((u) => u.id === msg.senderId)?.name ||
+                "Ukjent";
+
               return (
-                <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                <div
+                  key={msg.id}
+                  className={`flex items-end gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+                >
                   {!isMe && (
-                    <div className={`w-6 h-6 rounded-full ${getUserColor(msg.senderId, allUserIds)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                    <div
+                      className={`w-6 h-6 rounded-full ${getUserColor(
+                        msg.senderId,
+                        allUserIds,
+                      )} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
+                    >
                       {senderName.charAt(0).toUpperCase()}
                     </div>
                   )}
+
                   <div className="max-w-[75%]">
                     {!isMe && !activeConversation && (
-                      <p className="text-xs text-gray-400 mb-0.5 px-1">{senderName}</p>
-                    )}
-                    <div className={`px-3 py-2 rounded-2xl text-sm ${isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"}`}>
-                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      <p className={`text-xs mt-0.5 ${isMe ? "text-blue-200" : "text-gray-400"}`}>
-                        {formatTime(msg.createdAt)}
+                      <p className="text-xs text-gray-400 mb-0.5 px-1">
+                        {senderName}
                       </p>
+                    )}
+
+                    <div
+                      className={`px-3 py-2 rounded-2xl text-sm ${
+                        isMe
+                          ? "bg-blue-600 text-white rounded-br-sm"
+                          : "bg-gray-100 text-gray-900 rounded-bl-sm"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap break-words">
+                        {msg.content}
+                      </p>
+
+                      <div
+                        className={`text-xs mt-0.5 flex items-center gap-1 flex-wrap ${
+                          isMe ? "text-blue-200" : "text-gray-400"
+                        }`}
+                      >
+                        <span>{formatTime(msg.createdAt)}</span>
+
+                        {isMe && msg.deliveryStatus && (
+                          <span>
+                            {renderDeliveryStatus(msg, users, currentUserId)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               );
             })}
+
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
           <div className="px-3 py-2.5 border-t border-gray-200 flex items-end gap-2">
             <textarea
               value={input}
@@ -152,8 +275,18 @@ export function ChatWindow({
               disabled={!input.trim() || sending}
               className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 transition-colors flex-shrink-0"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             </button>
           </div>

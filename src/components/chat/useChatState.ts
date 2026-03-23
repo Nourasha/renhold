@@ -1,19 +1,10 @@
 // src/components/chat/useChatState.ts
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { ChatMessage } from "./types";
+import { ChatMessage, parseReadBy } from "./types";
 
 interface UseChatStateProps {
   currentUserId: string;
-}
-
-function safeParseReadBy(value: string | null | undefined): string[] {
-  try {
-    const parsed = JSON.parse(value || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 export function useChatState({ currentUserId }: UseChatStateProps) {
@@ -128,6 +119,28 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     }
   }, [updateAppBadge]);
 
+  const withDeliveryStatus = useCallback(
+    (msg: ChatMessage): ChatMessage => {
+      if (msg.senderId !== currentUserId) return msg;
+
+      const readBy = parseReadBy(msg.readBy);
+      const otherReaders = readBy.filter((id) => id !== currentUserId);
+
+      return {
+        ...msg,
+        deliveryStatus: otherReaders.length > 0 ? "read" : "sent",
+      };
+    },
+    [currentUserId],
+  );
+
+  const decorateMessagesWithStatus = useCallback(
+    (incomingMessages: ChatMessage[]): ChatMessage[] => {
+      return incomingMessages.map(withDeliveryStatus);
+    },
+    [withDeliveryStatus],
+  );
+
   const loadMessages = useCallback(
     async (conversationId: string | null): Promise<ChatMessage[] | null> => {
       const token = ++latestLoadTokenRef.current;
@@ -144,7 +157,9 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         if (!res.ok) return null;
 
         const data = await res.json();
-        const nextMessages: ChatMessage[] = data.messages || [];
+        const nextMessages: ChatMessage[] = decorateMessagesWithStatus(
+          data.messages || [],
+        );
 
         if (token !== latestLoadTokenRef.current) {
           return nextMessages;
@@ -156,14 +171,14 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         return null;
       }
     },
-    [],
+    [decorateMessagesWithStatus],
   );
 
   const markConversationAsRead = useCallback(
     async (msgs: ChatMessage[]) => {
       const unreadMsgs = msgs.filter((m) => {
         if (m.senderId === currentUserId) return false;
-        const readBy = safeParseReadBy(m.readBy);
+        const readBy = parseReadBy(m.readBy);
         return !readBy.includes(currentUserId);
       });
 
@@ -282,6 +297,24 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "Message" },
+        async (payload) => {
+          const updatedMsg = payload.new as ChatMessage;
+          if (!updatedMsg?.id) return;
+
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === updatedMsg.id
+                ? withDeliveryStatus({ ...msg, ...updatedMsg })
+                : msg,
+            ),
+          );
+
+          await fetchUnread();
+        },
+      )
+      .on(
+        "postgres_changes",
         { event: "DELETE", schema: "public", table: "Message" },
         async (payload) => {
           const deletedId = (payload.old as { id?: string })?.id;
@@ -303,6 +336,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
     markConversationAsRead,
     notifyServiceWorkerCloseChatNotifications,
     updateAppBadge,
+    withDeliveryStatus,
   ]);
 
   const selectConversation = useCallback(
@@ -367,6 +401,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         id: currentUserId,
         name: null,
       },
+      deliveryStatus: "sending",
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
@@ -386,7 +421,7 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
       }
 
       const data = await res.json();
-      const realMessage: ChatMessage = data.message;
+      const realMessage: ChatMessage = withDeliveryStatus(data.message);
 
       setMessages((prev) => {
         const exists = prev.some((m) => m.id === realMessage.id);
@@ -396,12 +431,16 @@ export function useChatState({ currentUserId }: UseChatStateProps) {
         return prev.map((m) => (m.id === tempId ? realMessage : m));
       });
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, deliveryStatus: "failed" } : m,
+        ),
+      );
       setInput(content);
     } finally {
       setSending(false);
     }
-  }, [input, sending, currentUserId]);
+  }, [input, sending, currentUserId, withDeliveryStatus]);
 
   const toggleOpen = useCallback(() => {
     setOpen((prev) => {
