@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { WeekPlanView } from "@/components/WeekPlanView";
+import { WeekPlanView } from "@/components/weekplan/WeekPlanView";
 
 function getCurrentWeek() {
   const now = new Date();

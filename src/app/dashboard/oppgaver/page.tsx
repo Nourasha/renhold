@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ChecklistBoard } from "@/components/ChecklistBoard";
+import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
 
 export default async function OppgaverPage() {
   const session = await getServerSession(authOptions);
@@ -33,7 +33,6 @@ export default async function OppgaverPage() {
           Ukentlig sjekkliste – huk av og godkjenn dine oppgaver for i dag
         </p>
       </div>
-
       <ChecklistBoard
         initialGroups={groups as any}
         currentUserId={userId}

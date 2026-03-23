@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DeviationList } from "@/components/DeviationList";
+import { DeviationList } from "@/components/deviations/DeviationList";
 
 export const revalidate = 0;
 
@@ -11,7 +11,6 @@ export default async function AvvikPage() {
   const userId = (session?.user as any)?.id;
   const userRole = (session?.user as any)?.role ?? "user";
 
-  // Fetch ALL deviations from all users
   const deviations = await prisma.deviation.findMany({
     orderBy: { createdAt: "desc" },
     include: { user: { select: { id: true, name: true } } },
