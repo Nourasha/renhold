@@ -1,8 +1,9 @@
+// src/app/dashboard/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { AvvikCount } from "@/components/AvvikCount";
+import { AvvikCount } from "@/components/notifications/AvvikCount";
 
 export const revalidate = 0;
 
@@ -55,11 +56,9 @@ export default async function DashboardPage() {
             <div className="flex items-start justify-between mb-4">
               <span className="text-3xl">{card.icon}</span>
             </div>
-
             <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
               {card.title}
             </h2>
-
             <p className="text-sm text-gray-500 mt-1">{card.description}</p>
           </Link>
         ))}
@@ -72,11 +71,9 @@ export default async function DashboardPage() {
             <span className="text-3xl">⚠️</span>
             <AvvikCount initialCount={deviations} />
           </div>
-
           <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
             Avvik
           </h2>
-
           <p className="text-sm text-gray-500 mt-1">
             Registrerte avvik og hendelser
           </p>

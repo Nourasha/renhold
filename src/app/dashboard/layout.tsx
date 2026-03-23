@@ -2,9 +2,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { FloatingChat } from "@/components/chat/FloatingChat";
-import { PushPermissionBanner } from "@/components/PushPermissionBanner";
+import { PushPermissionBanner } from "@/components/notifications/PushPermissionBanner";
 
 export default async function DashboardLayout({
   children,
