@@ -1,70 +1,89 @@
 "use client";
-// src/components/deviations/DeviationList.tsx
-import { useState } from "react";
+
+import { useState, useTransition } from "react";
 import { DeviationForm } from "./DeviationForm";
 import { DeviationCard } from "./DeviationCard";
+import type { Deviation } from "@/types";
+import {
+  createDeviationAction,
+  deleteDeviationAction,
+  updateDeviationStatusAction,
+} from "@/app/dashboard/avvik/actions";
 
-interface Deviation {
-  id: string;
-  title: string;
-  description: string;
-  severity: string;
-  status: string;
-  createdAt: Date | string;
-  userId: string;
-  user: { id: string; name: string | null };
+interface DeviationListProps {
+  initialDeviations: Deviation[];
+  currentUserId: string;
+  currentUserRole: string;
 }
 
 export function DeviationList({
   initialDeviations,
   currentUserId,
   currentUserRole,
-}: {
-  initialDeviations: Deviation[];
-  currentUserId: string;
-  currentUserRole: string;
-}) {
+}: DeviationListProps) {
   const [deviations, setDeviations] = useState<Deviation[]>(initialDeviations);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", severity: "low" });
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    severity: "low",
+  });
   const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const allUserIds = Array.from(new Set(deviations.map((d) => d.userId)));
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError("");
-    const res = await fetch("/api/avvik", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+
+    startTransition(async () => {
+      const res = await createDeviationAction(form);
+
+      if (res.ok && res.deviation) {
+        setDeviations((prev) => [res.deviation, ...prev]);
+        setForm({
+          title: "",
+          description: "",
+          severity: "low",
+        });
+        setShowForm(false);
+      } else {
+        setError(res.error || "Kunne ikke registrere avvik");
+      }
     });
-    const data = await res.json();
-    if (res.ok) {
-      setDeviations([data.deviation, ...deviations]);
-      setForm({ title: "", description: "", severity: "low" });
-      setShowForm(false);
-    } else {
-      setError(data.error);
-    }
-    setLoading(false);
   }
 
   async function handleStatusChange(id: string, status: string) {
-    const res = await fetch(`/api/avvik/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+    setError("");
+
+    startTransition(async () => {
+      const res = await updateDeviationStatusAction(id, status);
+
+      if (res.ok) {
+        setDeviations((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, status } : d)),
+        );
+      } else {
+        setError(res.error || "Kunne ikke oppdatere status");
+      }
     });
-    if (res.ok) setDeviations(deviations.map((d) => (d.id === id ? { ...d, status } : d)));
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Vil du slette dette avviket?")) return;
-    await fetch(`/api/avvik/${id}`, { method: "DELETE" });
-    setDeviations(deviations.filter((d) => d.id !== id));
+
+    setError("");
+
+    startTransition(async () => {
+      const res = await deleteDeviationAction(id);
+
+      if (res.ok) {
+        setDeviations((prev) => prev.filter((d) => d.id !== id));
+      } else {
+        setError(res.error || "Kunne ikke slette avvik");
+      }
+    });
   }
 
   return (
@@ -72,36 +91,46 @@ export function DeviationList({
       {!showForm ? (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+          className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
         >
-          <span>+</span> Registrer avvik
+          + Registrer avvik
         </button>
       ) : (
         <DeviationForm
           form={form}
-          loading={loading}
+          loading={isPending}
           error={error}
           onChange={setForm}
           onSubmit={handleAdd}
-          onCancel={() => setShowForm(false)}
+          onCancel={() => {
+            setShowForm(false);
+            setError("");
+          }}
         />
       )}
 
+      {error && !showForm && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       {deviations.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-2">⚠️</p>
-          <p className="text-sm">Ingen registrerte avvik</p>
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
+          <div className="mb-2 text-3xl">⚠️</div>
+          <p>Ingen registrerte avvik</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {deviations.map((dev) => (
+          {deviations.map((deviation) => (
             <DeviationCard
-              key={dev.id}
-              dev={dev}
-              isOwner={dev.userId === currentUserId || currentUserRole === "admin"}
+              key={deviation.id}
+              deviation={deviation}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole}
               allUserIds={allUserIds}
-              onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
             />
           ))}
         </div>

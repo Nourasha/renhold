@@ -1,100 +1,121 @@
 "use client";
-// src/components/deviations/DeviationCard.tsx
 
-interface Deviation {
-  id: string;
-  title: string;
-  description: string;
-  severity: string;
-  status: string;
-  createdAt: Date | string;
-  userId: string;
-  user: { id: string; name: string | null };
-}
+import type { Deviation } from "@/types";
+import { severityConfig, statusConfig, getUserColorTint } from "@/lib/utils";
 
-const severityConfig: Record<string, { label: string; color: string }> = {
-  low:      { label: "Lav",     color: "bg-green-100 text-green-700" },
-  medium:   { label: "Middels", color: "bg-yellow-100 text-yellow-700" },
-  high:     { label: "Høy",     color: "bg-orange-100 text-orange-700" },
-  critical: { label: "Kritisk", color: "bg-red-100 text-red-700" },
-};
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  open:          { label: "Åpen",             color: "bg-red-100 text-red-700" },
-  "in-progress": { label: "Under behandling", color: "bg-yellow-100 text-yellow-700" },
-  resolved:      { label: "Løst",             color: "bg-green-100 text-green-700" },
-};
-
-const userColors = [
-  "bg-indigo-100 text-indigo-800", "bg-pink-100 text-pink-800",
-  "bg-teal-100 text-teal-800",     "bg-amber-100 text-amber-800",
-  "bg-cyan-100 text-cyan-800",     "bg-rose-100 text-rose-800",
-  "bg-lime-100 text-lime-800",     "bg-violet-100 text-violet-800",
-];
-
-export function getUserColor(userId: string, allIds: string[]) {
-  const idx = allIds.indexOf(userId);
-  return userColors[idx % userColors.length] || "bg-gray-100 text-gray-700";
-}
-
-interface Props {
-  dev: Deviation;
-  isOwner: boolean;
+interface DeviationCardProps {
+  deviation: Deviation;
+  currentUserId: string;
+  currentUserRole: string;
   allUserIds: string[];
-  onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export function DeviationCard({ dev, isOwner, allUserIds, onDelete, onStatusChange }: Props) {
+export function DeviationCard({
+  deviation,
+  currentUserId,
+  currentUserRole,
+  allUserIds,
+  onStatusChange,
+  onDelete,
+}: DeviationCardProps) {
+  const severity =
+    severityConfig[deviation.severity as keyof typeof severityConfig] ??
+    severityConfig.low;
+
+  const status =
+    statusConfig[deviation.status as keyof typeof statusConfig] ??
+    statusConfig.open;
+
+  const canManage =
+    currentUserRole === "admin" || deviation.userId === currentUserId;
+
+  const createdAt = new Date(deviation.createdAt).toLocaleString("no-NO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <p className="font-medium text-gray-900">{dev.title}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${severityConfig[dev.severity]?.color}`}>
-              {severityConfig[dev.severity]?.label}
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-semibold text-gray-900">
+            {deviation.title}
+          </h3>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${severity.color}`}
+            >
+              {severity.label}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusConfig[dev.status]?.color}`}>
-              {statusConfig[dev.status]?.label}
+
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${status.color}`}
+            >
+              {status.label}
             </span>
-          </div>
-          <p className="text-sm text-gray-500">{dev.description}</p>
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getUserColor(dev.userId, allUserIds)}`}>
-              {dev.user?.name || "Ukjent"}
-            </span>
-            <span className="text-xs text-gray-400">
-              {new Date(dev.createdAt).toLocaleDateString("nb-NO")}
+
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getUserColorTint(
+                deviation.userId,
+                allUserIds,
+              )}`}
+            >
+              {deviation.user?.name || "Ukjent bruker"}
             </span>
           </div>
         </div>
-        {isOwner && (
-          <button
-            onClick={() => onDelete(dev.id)}
-            className="text-gray-300 hover:text-red-500 transition-colors text-lg leading-none flex-shrink-0"
-            title="Slett avvik"
-          >
-            ×
-          </button>
-        )}
+
+        <div className="shrink-0 text-right text-xs text-gray-500">
+          <div>Registrert</div>
+          <div>{createdAt}</div>
+        </div>
       </div>
 
-      {isOwner && dev.status !== "resolved" && (
-        <div className="mt-3 flex gap-2 flex-wrap">
-          {dev.status === "open" && (
+      <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+        {deviation.description}
+      </p>
+
+      {canManage && (
+        <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+          {deviation.status !== "open" && (
             <button
-              onClick={() => onStatusChange(dev.id, "in-progress")}
-              className="text-xs px-3 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full hover:bg-yellow-100"
+              type="button"
+              onClick={() => onStatusChange(deviation.id, "open")}
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
             >
-              Sett til behandling
+              Sett som åpen
             </button>
           )}
+
+          {deviation.status !== "in-progress" && (
+            <button
+              type="button"
+              onClick={() => onStatusChange(deviation.id, "in-progress")}
+              className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-100"
+            >
+              Under behandling
+            </button>
+          )}
+
+          {deviation.status !== "resolved" && (
+            <button
+              type="button"
+              onClick={() => onStatusChange(deviation.id, "resolved")}
+              className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+            >
+              Marker som løst
+            </button>
+          )}
+
           <button
-            onClick={() => onStatusChange(dev.id, "resolved")}
-            className="text-xs px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full hover:bg-green-100"
+            type="button"
+            onClick={() => onDelete(deviation.id)}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Merk som løst
+            Slett
           </button>
         </div>
       )}

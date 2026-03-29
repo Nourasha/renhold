@@ -50,6 +50,7 @@ export function WeekPlanDayCard({
         <div className="space-y-2 mb-3 p-3 bg-gray-50 rounded-lg">
           <input
             type="text"
+            aria-label="Tittel"
             placeholder="Tittel"
             value={form.title}
             onChange={(e) => onFormChange({ ...form, title: e.target.value })}
@@ -58,12 +59,14 @@ export function WeekPlanDayCard({
           <div className="flex gap-2">
             <input
               type="time"
+              aria-label="Starttid"
               value={form.startTime}
               onChange={(e) => onFormChange({ ...form, startTime: e.target.value })}
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"
             />
             <input
               type="time"
+              aria-label="Sluttid"
               value={form.endTime}
               onChange={(e) => onFormChange({ ...form, endTime: e.target.value })}
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none"

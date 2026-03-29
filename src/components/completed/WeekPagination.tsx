@@ -1,5 +1,3 @@
-// src/components/completed/WeekPagination.tsx
-import { getWeekStart, getWeekEnd } from "./types";
 
 interface Props {
   currentWeekNum: number;

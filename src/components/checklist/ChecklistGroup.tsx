@@ -1,6 +1,11 @@
-// src/components/checklist/ChecklistGroup.tsx
-import { Group, groupStyles } from "./checklistTypes";
+"use client";
+
+import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import type { Group } from "@/types";
+import { groupStyles } from "@/lib/utils";
 import { ChecklistItem } from "./ChecklistItem";
+import { useChecklistActions } from "./useChecklistActions";
 
 interface Props {
   group: Group;
@@ -8,41 +13,22 @@ interface Props {
   allUserIds: string[];
   checked: Set<string>;
   isAdmin?: boolean;
-  editingGroupId: string | null;
-  editingGroupTitle: string;
-  editingItemId: string | null;
-  editingItemLabel: string;
-  addingItemToGroup: string | null;
-  newItemLabel: string;
+  setGroups: Dispatch<SetStateAction<Group[]>>;
   onToggleItem: (itemId: string, isDone: boolean) => void;
-  onGroupEditStart: (groupId: string, title: string) => void;
-  onGroupEditChange: (title: string) => void;
-  onGroupEditSave: (groupId: string) => void;
-  onGroupEditCancel: () => void;
-  onGroupDelete: (groupId: string) => void;
-  onItemEditStart: (itemId: string, label: string) => void;
-  onItemEditChange: (label: string) => void;
-  onItemEditSave: (itemId: string, groupId: string) => void;
-  onItemEditCancel: () => void;
-  onItemDelete: (itemId: string, groupId: string) => void;
-  onAddItemStart: (groupId: string) => void;
-  onAddItemLabelChange: (label: string) => void;
-  onAddItem: (groupId: string) => void;
-  onAddItemCancel: () => void;
 }
 
 export function ChecklistGroup({
-  group, currentUserId, allUserIds, checked, isAdmin,
-  editingGroupId, editingGroupTitle, editingItemId, editingItemLabel,
-  addingItemToGroup, newItemLabel,
-  onToggleItem, onGroupEditStart, onGroupEditChange, onGroupEditSave,
-  onGroupEditCancel, onGroupDelete, onItemEditStart, onItemEditChange,
-  onItemEditSave, onItemEditCancel, onItemDelete,
-  onAddItemStart, onAddItemLabelChange, onAddItem, onAddItemCancel,
+  group, currentUserId, allUserIds, checked, isAdmin, setGroups, onToggleItem,
 }: Props) {
+  const actions = useChecklistActions(setGroups);
   const style = groupStyles[group.color] || groupStyles.blue;
-  const isEditingGroup = editingGroupId === group.id;
-  const isAddingItem = addingItemToGroup === group.id;
+
+  const [isEditingGroup, setIsEditingGroup] = useState(false);
+  const [editingGroupTitle, setEditingGroupTitle] = useState("");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemLabel, setEditingItemLabel] = useState("");
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [newItemLabel, setNewItemLabel] = useState("");
 
   return (
     <div className={`rounded-xl border-2 overflow-hidden shadow-sm ${style.card}`}>
@@ -53,16 +39,22 @@ export function ChecklistGroup({
             <input
               type="text"
               value={editingGroupTitle}
-              onChange={(e) => onGroupEditChange(e.target.value)}
+              onChange={(e) => setEditingGroupTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") onGroupEditSave(group.id);
-                if (e.key === "Escape") onGroupEditCancel();
+                if (e.key === "Enter") actions.saveGroupTitle(group.id, editingGroupTitle, () => setIsEditingGroup(false));
+                if (e.key === "Escape") setIsEditingGroup(false);
               }}
+              aria-label="Kategorinavn"
+              placeholder="Kategorinavn..."
               className="flex-1 px-2 py-1 text-sm text-gray-900 rounded border border-white/50 focus:outline-none"
               autoFocus
             />
-            <button onClick={() => onGroupEditSave(group.id)} className="text-white text-xs bg-white/20 px-2 py-1 rounded hover:bg-white/30">✓</button>
-            <button onClick={onGroupEditCancel} className="text-white/70 hover:text-white text-xs">✕</button>
+            <button
+              type="button"
+              onClick={() => actions.saveGroupTitle(group.id, editingGroupTitle, () => setIsEditingGroup(false))}
+              className="text-white text-xs bg-white/20 px-2 py-1 rounded hover:bg-white/30"
+            >✓</button>
+            <button type="button" onClick={() => setIsEditingGroup(false)} className="text-white/70 hover:text-white text-xs">✕</button>
           </div>
         ) : (
           <>
@@ -70,12 +62,14 @@ export function ChecklistGroup({
             {isAdmin && (
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => onGroupEditStart(group.id, group.title)}
+                  type="button"
+                  onClick={() => { setEditingGroupTitle(group.title); setIsEditingGroup(true); }}
                   className="text-white/70 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/20"
                   title="Rediger kategori"
                 >✏️</button>
                 <button
-                  onClick={() => onGroupDelete(group.id)}
+                  type="button"
+                  onClick={() => actions.deleteGroup(group.id)}
                   className="text-white/70 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/20"
                   title="Slett kategori"
                 >🗑️</button>
@@ -100,36 +94,41 @@ export function ChecklistGroup({
             editingItemId={editingItemId}
             editingItemLabel={editingItemLabel}
             onToggle={onToggleItem}
-            onEditStart={onItemEditStart}
-            onEditChange={onItemEditChange}
-            onEditSave={onItemEditSave}
-            onEditCancel={onItemEditCancel}
-            onDelete={onItemDelete}
+            onEditStart={(id, label) => { setEditingItemId(id); setEditingItemLabel(label); }}
+            onEditChange={setEditingItemLabel}
+            onEditSave={(id, gid) => actions.saveItemLabel(id, gid, editingItemLabel, () => setEditingItemId(null))}
+            onEditCancel={() => setEditingItemId(null)}
+            onDelete={actions.deleteItem}
           />
         ))}
 
-        {/* Add item inline */}
         {isAdmin && (
           isAddingItem ? (
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="text"
                 value={newItemLabel}
-                onChange={(e) => onAddItemLabelChange(e.target.value)}
+                onChange={(e) => setNewItemLabel(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") onAddItem(group.id);
-                  if (e.key === "Escape") onAddItemCancel();
+                  if (e.key === "Enter") actions.addItem(group.id, newItemLabel, () => { setNewItemLabel(""); setIsAddingItem(false); });
+                  if (e.key === "Escape") setIsAddingItem(false);
                 }}
+                aria-label="Navn på oppgave"
                 placeholder="Navn på oppgave..."
                 className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                 autoFocus
               />
-              <button onClick={() => onAddItem(group.id)} className="text-green-600 hover:text-green-700 text-sm font-bold">✓</button>
-              <button onClick={onAddItemCancel} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+              <button
+                type="button"
+                onClick={() => actions.addItem(group.id, newItemLabel, () => { setNewItemLabel(""); setIsAddingItem(false); })}
+                className="text-green-600 hover:text-green-700 text-sm font-bold"
+              >✓</button>
+              <button type="button" onClick={() => setIsAddingItem(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
             </div>
           ) : (
             <button
-              onClick={() => onAddItemStart(group.id)}
+              type="button"
+              onClick={() => { setIsAddingItem(true); setNewItemLabel(""); }}
               className="w-full text-left text-xs text-gray-400 hover:text-gray-600 pt-1 pl-1 hover:underline"
             >
               + Legg til oppgave

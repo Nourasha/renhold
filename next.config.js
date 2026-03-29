@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = {
   env: {
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
   },
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+    },
+  },
 };
-module.exports = nextConfig;

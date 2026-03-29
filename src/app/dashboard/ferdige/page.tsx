@@ -1,8 +1,10 @@
-// src/app/dashboard/ferdige/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CompletedChecklist } from "@/components/checklist/CompletedChecklist";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function FerdigeOppgaverPage() {
   const session = await getServerSession(authOptions);
@@ -30,10 +32,11 @@ export default async function FerdigeOppgaverPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Ferdige oppgaver</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-gray-500">
           Godkjente oppgaver og notater per dag
         </p>
       </div>
+
       <CompletedChecklist
         completions={completions as any}
         initialNotes={notes as any}

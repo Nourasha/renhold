@@ -1,7 +1,8 @@
 // src/components/chat/useChatState.ts
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { ChatMessage, parseReadBy } from "./types";
+import type { ChatMessage } from "@/types";
+import { parseReadBy } from "@/lib/utils";
 
 interface UseChatStateProps {
   currentUserId: string;

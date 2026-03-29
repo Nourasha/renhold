@@ -1,5 +1,4 @@
-// src/components/completed/ChecklistFilters.tsx
-import { formatDate } from "./types";
+import { formatDate } from "@/lib/utils";
 
 interface Props {
   filterUser: string;
@@ -31,6 +30,7 @@ export function ChecklistFilters({
   return (
     <div className="flex flex-wrap gap-3">
       <select
+        aria-label="Filtrer bruker"
         value={filterUser}
         onChange={(e) => onUserChange(e.target.value)}
         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -44,6 +44,7 @@ export function ChecklistFilters({
       </select>
 
       <select
+        aria-label="Filtrer uke"
         value={filterWeek}
         onChange={(e) => onWeekChange(e.target.value)}
         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -61,6 +62,7 @@ export function ChecklistFilters({
       </select>
 
       <select
+        aria-label="Filtrer dato"
         value={filterDate}
         onChange={(e) => onDateChange(e.target.value)}
         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -75,6 +77,7 @@ export function ChecklistFilters({
 
       {hasFilter && (
         <button
+          type="button"
           onClick={onReset}
           className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
         >

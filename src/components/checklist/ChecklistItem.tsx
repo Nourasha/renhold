@@ -1,5 +1,5 @@
-// src/components/checklist/ChecklistItem.tsx
-import { Item, Completion, getUserColor } from "./checklistTypes";
+import type { Item } from "@/types";
+import { getUserColorTint } from "@/lib/utils";
 
 interface Props {
   item: Item;
@@ -20,16 +20,28 @@ interface Props {
 }
 
 export function ChecklistItem({
-  item, groupId, currentUserId, allUserIds, checkStyle,
-  isChecked, isAdmin, editingItemId, editingItemLabel,
-  onToggle, onEditStart, onEditChange, onEditSave, onEditCancel, onDelete,
+  item,
+  groupId,
+  currentUserId,
+  allUserIds,
+  checkStyle,
+  isChecked,
+  isAdmin,
+  editingItemId,
+  editingItemLabel,
+  onToggle,
+  onEditStart,
+  onEditChange,
+  onEditSave,
+  onEditCancel,
+  onDelete,
 }: Props) {
   const isDone = !!item.completions.find((c) => c.userId === currentUserId);
   const isEditing = editingItemId === item.id;
 
   return (
     <div
-      className={`flex items-start gap-2 p-2 rounded-lg transition-colors
+      className={`flex items-start gap-2 rounded-lg p-2 transition-colors
         ${isDone ? "cursor-default" : "cursor-pointer hover:bg-white/70"}
         ${isChecked && !isDone ? "bg-white shadow-sm" : ""}`}
     >
@@ -38,9 +50,11 @@ export function ChecklistItem({
         checked={isDone || isChecked}
         disabled={isDone}
         onChange={() => onToggle(item.id, isDone)}
-        className={`mt-0.5 w-4 h-4 rounded flex-shrink-0 ${checkStyle}`}
+        className={`mt-0.5 h-4 w-4 flex-shrink-0 rounded ${checkStyle}`}
+        aria-label={`Toggle completion for ${item.label}`}
       />
-      <div className="flex-1 min-w-0">
+
+      <div className="min-w-0 flex-1">
         {isEditing ? (
           <div className="flex items-center gap-1">
             <input
@@ -51,37 +65,59 @@ export function ChecklistItem({
                 if (e.key === "Enter") onEditSave(item.id, groupId);
                 if (e.key === "Escape") onEditCancel();
               }}
-              className="flex-1 px-2 py-0.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              aria-label="Rediger oppgavenavn"
+              className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               autoFocus
             />
-            <button onClick={() => onEditSave(item.id, groupId)} className="text-green-600 hover:text-green-700 text-sm">✓</button>
-            <button onClick={onEditCancel} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+            <button
+              onClick={() => onEditSave(item.id, groupId)}
+              className="text-sm text-green-600 hover:text-green-700"
+            >
+              ✓
+            </button>
+            <button
+              onClick={onEditCancel}
+              className="text-sm text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-1 group">
-            <span className="text-sm text-gray-800 font-medium">{item.label}</span>
+          <div className="group flex items-center justify-between gap-1">
+            <span className="text-sm font-medium text-gray-800">
+              {item.label}
+            </span>
+
             {isAdmin && (
-              <div className="flex gap-0.5 flex-shrink-0">
+              <div className="flex flex-shrink-0 gap-0.5">
                 <button
                   onClick={() => onEditStart(item.id, item.label)}
-                  className="text-gray-400 hover:text-blue-600 text-xs p-0.5"
+                  className="p-0.5 text-xs text-gray-400 hover:text-blue-600"
                   title="Rediger"
-                >✏️</button>
+                >
+                  ✏️
+                </button>
                 <button
                   onClick={() => onDelete(item.id, groupId)}
-                  className="text-gray-400 hover:text-red-500 text-xs p-0.5"
+                  className="p-0.5 text-xs text-gray-400 hover:text-red-500"
                   title="Slett"
-                >🗑️</button>
+                >
+                  🗑️
+                </button>
               </div>
             )}
           </div>
         )}
+
         {item.completions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-1 flex flex-wrap gap-1">
             {item.completions.map((c) => (
               <span
-                key={c.userId}
-                className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${getUserColor(c.userId, allUserIds)}`}
+                key={`${item.id}-${c.userId}`}
+                className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${getUserColorTint(
+                  c.userId,
+                  allUserIds,
+                )}`}
               >
                 {c.user.name || "Ukjent"}
               </span>

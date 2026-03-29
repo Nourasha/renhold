@@ -13,21 +13,21 @@ export const authOptions: NextAuthOptions = {
   jwt: {
     maxAge: 30 * 24 * 60 * 60, // 30 dager
   },
-  cookies: {
-    sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.session-token"
-          : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60,
-      },
-    },
-  },
+  // cookies: {
+  //   sessionToken: {
+  //     name:
+  //       process.env.NODE_ENV === "production"
+  //         ? "__Secure-next-auth.session-token"
+  //         : "next-auth.session-token",
+  //     options: {
+  //       httpOnly: true,
+  //       sameSite: "none",
+  //       path: "/",
+  //       secure: process.env.NODE_ENV === "production",
+  //       maxAge: 30 * 24 * 60 * 60,
+  //     },
+  //   },
+  // },
   providers: [
     CredentialsProvider({
       name: "credentials",

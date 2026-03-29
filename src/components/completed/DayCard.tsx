@@ -1,14 +1,11 @@
-// src/components/completed/DayCard.tsx
+import type { Completion, DailyNote } from "@/types";
 import {
-  Completion,
-  DailyNote,
   DAY_COLORS,
-  groupHeaderColors,
-  groupBorderColors,
+  groupStyles,
   formatDate,
   getWeekNumber,
-  getUserColorClass,
-} from "./types";
+  getUserColorBg,
+} from "@/lib/utils";
 
 interface Props {
   date: string;
@@ -27,6 +24,10 @@ interface Props {
   onDraftChange: (date: string, value: string) => void;
   onSaveNote: (date: string) => void;
   onDeleteCompletion: (id: string) => void;
+}
+
+function getUtcDayIndex(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
 }
 
 export function DayCard({
@@ -49,29 +50,28 @@ export function DayCard({
 }: Props) {
   const isToday = date === today;
   const weekNum = getWeekNumber(date);
-  const dayOfWeek = new Date(date + "T12:00:00").getDay();
+  const dayOfWeek = getUtcDayIndex(date);
   const dayColor = DAY_COLORS[dayOfWeek];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-      {/* Day header */}
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div
-        className={`flex items-center justify-between gap-3 flex-wrap px-5 py-3 border-b border-gray-100 ${
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 ${
           isToday ? "bg-blue-100" : dayColor.bg
         }`}
       >
         <h3
-          className={`font-bold flex items-center gap-2 flex-wrap ${
+          className={`flex flex-wrap items-center gap-2 font-bold ${
             isToday ? "text-blue-800" : dayColor.text
           }`}
         >
           <span className="text-lg">📅</span>
           {formatDate(date)}
-          <span className="text-xs px-2 py-0.5 bg-white border border-gray-200 text-gray-500 rounded-full font-medium">
+          <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-500">
             Uke {weekNum}
           </span>
           {isToday && (
-            <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
               I dag
             </span>
           )}
@@ -80,7 +80,7 @@ export function DayCard({
         {!isNoteOpen && (
           <button
             onClick={() => onToggleNote(date)}
-            className="text-sm px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-white transition-colors flex items-center gap-1.5"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-white"
           >
             <span>📝</span>
             {myNote ? "Rediger notat" : "Legg til notat"}
@@ -88,11 +88,9 @@ export function DayCard({
         )}
       </div>
 
-      {/* Day content */}
-      <div className="p-4 space-y-3">
-        {/* Note editor */}
+      <div className="space-y-3 p-4">
         {isNoteOpen && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+          <div className="space-y-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
             <p className="text-sm font-medium text-yellow-800">
               📝 Ditt notat for {formatDate(date)}
             </p>
@@ -101,19 +99,19 @@ export function DayCard({
               onChange={(e) => onDraftChange(date, e.target.value)}
               rows={3}
               placeholder="Skriv hva du har gjort i dag, spesifikasjoner, avvik..."
-              className="w-full px-3 py-2 border border-yellow-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none bg-white"
+              className="w-full resize-none rounded-lg border border-yellow-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
             <div className="flex gap-2">
               <button
                 onClick={() => onSaveNote(date)}
                 disabled={!draft.trim() || savingNote === date}
-                className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-yellow-600 disabled:opacity-50"
               >
                 {savingNote === date ? "Lagrer..." : "Lagre notat"}
               </button>
               <button
                 onClick={() => onCloseNote(date)}
-                className="px-4 py-2 text-gray-600 rounded-lg text-sm hover:bg-gray-100"
+                className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
               >
                 Avbryt
               </button>
@@ -121,19 +119,18 @@ export function DayCard({
           </div>
         )}
 
-        {/* Existing notes */}
         {dayNotes.length > 0 && (
           <div className="space-y-2">
             {dayNotes.map((note) => (
               <div
                 key={note.id}
-                className="bg-yellow-50 border border-yellow-100 rounded-lg px-4 py-3 flex gap-3"
+                className="flex gap-3 rounded-lg border border-yellow-100 bg-yellow-50 px-4 py-3"
               >
-                <span className="text-yellow-400 flex-shrink-0">📝</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="flex-shrink-0 text-yellow-400">📝</span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getUserColorClass(
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold text-white ${getUserColorBg(
                         note.user.id,
                         allUserIds,
                       )}`}
@@ -149,7 +146,7 @@ export function DayCard({
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  <p className="whitespace-pre-wrap text-sm text-gray-700">
                     {note.content}
                   </p>
                 </div>
@@ -158,48 +155,48 @@ export function DayCard({
           </div>
         )}
 
-        {/* Checklist completions */}
         {Object.keys(completionsByGroup).length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Object.entries(completionsByGroup).map(([groupTitle, itemMap]) => {
               const firstCompletion = Object.values(itemMap)[0]?.[0];
               const color = firstCompletion?.item.group.color || "blue";
-              const headerCls =
-                groupHeaderColors[color] || groupHeaderColors.blue;
-              const borderCls =
-                groupBorderColors[color] || groupBorderColors.blue;
+              const style = groupStyles[color] || groupStyles.blue;
+              const headerCls = style.header;
+              const borderCls = style.border;
 
               return (
                 <div
                   key={groupTitle}
-                  className={`rounded-xl border-2 overflow-hidden shadow-sm ${borderCls}`}
+                  className={`overflow-hidden rounded-xl border-2 shadow-sm ${borderCls}`}
                 >
                   <div className={`px-4 py-2.5 ${headerCls}`}>
-                    <h4 className="font-bold text-sm">{groupTitle}</h4>
+                    <h4 className="text-sm font-bold">{groupTitle}</h4>
                   </div>
-                  <div className="bg-white p-3 space-y-2">
+
+                  <div className="space-y-2 bg-white p-3">
                     {Object.entries(itemMap).map(
                       ([label, completionsForItem]) => (
                         <div
                           key={label}
                           className="flex items-center justify-between gap-2"
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="text-green-500 flex-shrink-0">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="flex-shrink-0 text-green-500">
                               ✓
                             </span>
-                            <span className="text-sm text-gray-800 truncate">
+                            <span className="truncate text-sm text-gray-800">
                               {label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1 flex-wrap justify-end flex-shrink-0">
+
+                          <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1">
                             {completionsForItem.map((c) => (
                               <div
                                 key={c.id}
                                 className="flex items-center gap-0.5"
                               >
                                 <span
-                                  className={`text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${getUserColorClass(
+                                  className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold text-white ${getUserColorBg(
                                     c.user.id,
                                     allUserIds,
                                   )}`}
@@ -210,7 +207,7 @@ export function DayCard({
                                   <button
                                     onClick={() => onDeleteCompletion(c.id)}
                                     disabled={deletingId === c.id}
-                                    className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none ml-0.5 disabled:opacity-40"
+                                    className="ml-0.5 text-base leading-none text-gray-300 transition-colors hover:text-red-500 disabled:opacity-40"
                                     title="Slett min godkjenning"
                                   >
                                     ×

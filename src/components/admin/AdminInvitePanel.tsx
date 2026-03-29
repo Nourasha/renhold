@@ -1,15 +1,13 @@
 "use client";
 // src/components/admin/AdminInvitePanel.tsx
 import { useState } from "react";
+import { InviteCodeMeta } from "@/types";
 
-interface InviteCodeMeta {
-  id: string;
-  used: boolean;
-  createdAt: string | Date;
-  usedAt?: string | Date | null;
-}
-
-export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMeta[] }) {
+export function AdminInvitePanel({
+  initialCodes,
+}: {
+  initialCodes: InviteCodeMeta[];
+}) {
   const [codes, setCodes] = useState<InviteCodeMeta[]>(initialCodes);
   const [loading, setLoading] = useState(false);
   const [freshCode, setFreshCode] = useState<string | null>(null);
@@ -22,7 +20,10 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
     const data = await res.json();
     if (res.ok) {
       setFreshCode(data.code);
-      setCodes((prev) => [{ id: Date.now().toString(), used: false, createdAt: new Date() }, ...prev]);
+      setCodes((prev) => [
+        { id: Date.now().toString(), used: false, createdAt: new Date() },
+        ...prev,
+      ]);
     }
     setLoading(false);
   }
@@ -40,9 +41,12 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
   return (
     <div className="space-y-5">
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Generer passkode</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">
+          Generer passkode
+        </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Passkoden krypteres og lagres sikkert. Den vises kun én gang — noter den ned og del med brukeren.
+          Passkoden krypteres og lagres sikkert. Den vises kun én gang — noter
+          den ned og del med brukeren.
         </p>
         <button
           onClick={generateCode}
@@ -82,29 +86,40 @@ export function AdminInvitePanel({ initialCodes }: { initialCodes: InviteCodeMet
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Passkode-oversikt</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Passkode-oversikt
+        </h2>
         <div className="flex gap-4 flex-wrap mb-4">
           <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-center">
             <p className="text-2xl font-bold text-green-700">{unusedCount}</p>
             <p className="text-xs text-green-600">Ubrukte</p>
           </div>
           <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-center">
-            <p className="text-2xl font-bold text-gray-600">{usedCodes.length}</p>
+            <p className="text-2xl font-bold text-gray-600">
+              {usedCodes.length}
+            </p>
             <p className="text-xs text-gray-500">Brukte</p>
           </div>
         </div>
         {usedCodes.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Brukte koder</p>
+            <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+              Brukte koder
+            </p>
             <div className="space-y-1.5">
               {usedCodes.map((code) => (
                 <div
                   key={code.id}
                   className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100"
                 >
-                  <span className="font-mono text-gray-400 text-sm">••••••••••••</span>
+                  <span className="font-mono text-gray-400 text-sm">
+                    ••••••••••••
+                  </span>
                   <span className="text-xs text-gray-400">
-                    Brukt {code.usedAt ? new Date(code.usedAt).toLocaleDateString("nb-NO") : "–"}
+                    Brukt{" "}
+                    {code.usedAt
+                      ? new Date(code.usedAt).toLocaleDateString("nb-NO")
+                      : "–"}
                   </span>
                 </div>
               ))}

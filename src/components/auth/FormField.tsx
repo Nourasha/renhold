@@ -32,8 +32,9 @@ export function FormField({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label} *</label>
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label} *</label>
       <input
+        id={name}
         type={type}
         name={name}
         value={value}

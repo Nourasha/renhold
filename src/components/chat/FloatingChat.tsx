@@ -2,7 +2,7 @@
 
 // src/components/chat/FloatingChat.tsx
 import { useEffect, useRef } from "react";
-import { ChatUser } from "./types";
+import type { ChatUser } from "@/types";
 import { useChatState } from "./useChatState";
 import { ChatWindow } from "./ChatWindow";
 import { ChatBubbleButton } from "./ChatBubbleButton";

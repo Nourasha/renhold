@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { AdminInvitePanel } from "@/components/admin/AdminInvitePanel";
 import { AdminUserPanel } from "@/components/admin/AdminUserPanel";
 
+export const revalidate = 0;
+
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
 

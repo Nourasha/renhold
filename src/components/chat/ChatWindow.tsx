@@ -1,12 +1,7 @@
 // src/components/chat/ChatWindow.tsx
 import { RefObject } from "react";
-import {
-  ChatUser,
-  ChatMessage,
-  getUserColor,
-  formatTime,
-  parseReadBy,
-} from "./types";
+import type { ChatUser, ChatMessage } from "@/types";
+import { getUserColorBg, formatTime, parseReadBy } from "@/lib/utils";
 
 interface Props {
   showConversations: boolean;
@@ -216,7 +211,7 @@ export function ChatWindow({
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 text-left"
             >
               <div
-                className={`w-9 h-9 rounded-full ${getUserColor(
+                className={`w-9 h-9 rounded-full ${getUserColorBg(
                   user.id,
                   allUserIds,
                 )} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
@@ -263,7 +258,7 @@ export function ChatWindow({
                 >
                   {!isMe && (
                     <div
-                      className={`w-6 h-6 rounded-full ${getUserColor(
+                      className={`w-6 h-6 rounded-full ${getUserColorBg(
                         msg.senderId,
                         allUserIds,
                       )} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}

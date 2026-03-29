@@ -1,47 +1,53 @@
 "use client";
-// src/components/checklist/ChecklistBoard.tsx
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Group } from "./checklistTypes";
+
+import { useEffect, useState, useTransition } from "react";
+import type { Group } from "@/types";
 import { ChecklistGroup } from "./ChecklistGroup";
 import { AddGroupPanel } from "./AddGroupPanel";
-import { useChecklistActions } from "./useChecklistActions";
+import { completeChecklistItemsAction } from "@/app/dashboard/oppgaver/actions";
 
 interface Props {
   initialGroups: Group[];
   currentUserId: string;
-  today: string;
+  currentUserName: string;
+  today?: string;
   isAdmin?: boolean;
 }
 
-export function ChecklistBoard({ initialGroups, currentUserId, today, isAdmin }: Props) {
-  const router = useRouter();
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
+export function ChecklistBoard({
+  initialGroups,
+  currentUserId,
+  currentUserName,
+  isAdmin,
+}: Props) {
+  const [isPending, startTransition] = useTransition();
+  const [groups, setGroups] = useState(initialGroups);
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [editingGroupTitle, setEditingGroupTitle] = useState("");
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingItemLabel, setEditingItemLabel] = useState("");
-  const [addingItemToGroup, setAddingItemToGroup] = useState<string | null>(null);
-  const [newItemLabel, setNewItemLabel] = useState("");
-  const [showNewGroup, setShowNewGroup] = useState(false);
-  const [newGroupTitle, setNewGroupTitle] = useState("");
-  const [newGroupColor, setNewGroupColor] = useState("blue");
+  useEffect(() => {
+    setGroups(initialGroups);
+  }, [initialGroups]);
 
-  const actions = useChecklistActions(setGroups);
-
-  const allUserIds = Array.from(new Set(
-    groups.flatMap((g) => g.items.flatMap((i) => i.completions.map((c) => c.userId)))
-  ));
+  const allUserIds = Array.from(
+    new Set([
+      currentUserId,
+      ...groups.flatMap((g) =>
+        g.items.flatMap((i) => i.completions.map((c) => c.userId)),
+      ),
+    ]),
+  );
 
   function toggleItem(itemId: string, isDone: boolean) {
     if (isDone) return;
     setChecked((prev) => {
       const next = new Set(prev);
-      next.has(itemId) ? next.delete(itemId) : next.add(itemId);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
       return next;
     });
   }
@@ -49,48 +55,82 @@ export function ChecklistBoard({ initialGroups, currentUserId, today, isAdmin }:
   async function approveAll() {
     const itemIds = Array.from(checked);
     if (itemIds.length === 0) return;
-    setLoading(true);
-    const res = await fetch("/api/checklist/complete", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemIds }),
+
+    setErrorMsg(null);
+    const previousGroups = groups;
+
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (!itemIds.includes(item.id)) return item;
+          const alreadyCompleted = item.completions.some((c) => c.userId === currentUserId);
+          if (alreadyCompleted) return item;
+          return {
+            ...item,
+            completions: [
+              ...item.completions,
+              { userId: currentUserId, user: { id: currentUserId, name: currentUserName } },
+            ],
+          };
+        }),
+      })),
+    );
+
+    setChecked(new Set());
+    setSuccessMsg(`${itemIds.length} oppgave${itemIds.length !== 1 ? "r" : ""} godkjent! ✅`);
+    setTimeout(() => setSuccessMsg(null), 4000);
+
+    startTransition(async () => {
+      const res = await completeChecklistItemsAction(itemIds);
+      if (!res.ok) {
+        setGroups(previousGroups);
+        setErrorMsg(res.error || "Kunne ikke godkjenne oppgavene");
+      }
     });
-    if (res.ok) {
-      setChecked(new Set());
-      setSuccessMsg(`${itemIds.length} oppgave${itemIds.length !== 1 ? "r" : ""} godkjent! ✅`);
-      setTimeout(() => setSuccessMsg(null), 4000);
-      router.refresh();
-    }
-    setLoading(false);
   }
 
   const totalChecked = checked.size;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-4 flex-wrap">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
         <button
+          type="button"
           onClick={approveAll}
-          disabled={totalChecked === 0 || loading}
-          className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+          disabled={isPending || totalChecked === 0}
+          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Godkjenner..." : totalChecked > 0
-            ? `✓ Godkjenn ${totalChecked} oppgave${totalChecked !== 1 ? "r" : ""}`
-            : "✓ Godkjenn valgte"}
+          {isPending
+            ? "Godkjenner..."
+            : totalChecked > 0
+              ? `✓ Godkjenn ${totalChecked} oppgave${totalChecked !== 1 ? "r" : ""}`
+              : "✓ Godkjenn valgte"}
         </button>
-        {totalChecked > 0 && !loading && (
-          <button onClick={() => setChecked(new Set())} className="text-sm text-gray-400 hover:text-gray-600 underline">
+
+        {totalChecked > 0 && !isPending && (
+          <button
+            type="button"
+            onClick={() => setChecked(new Set())}
+            className="text-sm text-gray-400 underline hover:text-gray-600"
+          >
             Fjern alle valg
           </button>
         )}
       </div>
 
       {successMsg && (
-        <div className="px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm font-medium">
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           {successMsg}
         </div>
       )}
+      {errorMsg && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {errorMsg}
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {groups.map((group) => (
           <ChecklistGroup
             key={group.id}
@@ -99,42 +139,11 @@ export function ChecklistBoard({ initialGroups, currentUserId, today, isAdmin }:
             allUserIds={allUserIds}
             checked={checked}
             isAdmin={isAdmin}
-            editingGroupId={editingGroupId}
-            editingGroupTitle={editingGroupTitle}
-            editingItemId={editingItemId}
-            editingItemLabel={editingItemLabel}
-            addingItemToGroup={addingItemToGroup}
-            newItemLabel={newItemLabel}
+            setGroups={setGroups}
             onToggleItem={toggleItem}
-            onGroupEditStart={(id, title) => { setEditingGroupId(id); setEditingGroupTitle(title); }}
-            onGroupEditChange={setEditingGroupTitle}
-            onGroupEditSave={(id) => actions.saveGroupTitle(id, editingGroupTitle, () => setEditingGroupId(null))}
-            onGroupEditCancel={() => setEditingGroupId(null)}
-            onGroupDelete={actions.deleteGroup}
-            onItemEditStart={(id, label) => { setEditingItemId(id); setEditingItemLabel(label); }}
-            onItemEditChange={setEditingItemLabel}
-            onItemEditSave={(id, gid) => actions.saveItemLabel(id, gid, editingItemLabel, () => setEditingItemId(null))}
-            onItemEditCancel={() => setEditingItemId(null)}
-            onItemDelete={actions.deleteItem}
-            onAddItemStart={(id) => { setAddingItemToGroup(id); setNewItemLabel(""); }}
-            onAddItemLabelChange={setNewItemLabel}
-            onAddItem={(gid) => actions.addItem(gid, newItemLabel, () => { setNewItemLabel(""); setAddingItemToGroup(null); })}
-            onAddItemCancel={() => setAddingItemToGroup(null)}
           />
         ))}
-        {isAdmin && (
-          <AddGroupPanel
-            show={showNewGroup}
-            title={newGroupTitle}
-            color={newGroupColor}
-            onToggle={() => setShowNewGroup((v) => !v)}
-            onTitleChange={setNewGroupTitle}
-            onColorChange={setNewGroupColor}
-            onAdd={() => actions.addGroup(newGroupTitle, newGroupColor, () => {
-              setNewGroupTitle(""); setNewGroupColor("blue"); setShowNewGroup(false);
-            })}
-          />
-        )}
+        {isAdmin && <AddGroupPanel setGroups={setGroups} />}
       </div>
     </div>
   );
