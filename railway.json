@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx prisma generate && npx prisma db push && npx prisma db seed && npm start",
+    "startCommand": "npx prisma generate && npm start",
     "restartPolicyType": "ON_FAILURE"
   }
 }
