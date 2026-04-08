@@ -49,6 +49,8 @@ model WeekPlan {
   updatedAt   DateTime @updatedAt
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Deviation {
@@ -61,6 +63,8 @@ model Deviation {
   updatedAt   DateTime @updatedAt
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ChecklistGroup {
@@ -78,6 +82,8 @@ model ChecklistItem {
   groupId     String
   group       ChecklistGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
   completions ChecklistCompletion[]
+
+  @@index([groupId])
 }
 
 model ChecklistCompletion {
@@ -90,6 +96,7 @@ model ChecklistCompletion {
   date        String
 
   @@unique([itemId, userId, date])
+  @@index([userId])
 }
 
 model DailyNote {
@@ -114,6 +121,9 @@ model Message {
 
   sender   User  @relation("SentMessages",     fields: [senderId],   references: [id], onDelete: Cascade)
   receiver User? @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
 }
 
 model PushSubscription {
@@ -124,4 +134,6 @@ model PushSubscription {
   auth      String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
