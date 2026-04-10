@@ -17,7 +17,6 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  weekPlans            WeekPlan[]
   deviations           Deviation[]
   checklistCompletions ChecklistCompletion[]
   dailyNotes           DailyNote[]
@@ -40,17 +39,11 @@ model WeekPlan {
   id          String   @id @default(cuid())
   title       String
   description String?
-  weekNumber  Int
-  year        Int
   dayOfWeek   String
   startTime   String?
   endTime     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 model Deviation {

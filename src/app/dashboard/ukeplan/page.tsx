@@ -1,25 +1,15 @@
 // src/app/dashboard/ukeplan/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { WeekPlanView } from "@/components/weekplan/WeekPlanView";
 
-function getCurrentWeek() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = now.getTime() - start.getTime();
-  const oneWeek = 1000 * 60 * 60 * 24 * 7;
-  return Math.ceil(diff / oneWeek);
-}
-
 export default async function UkeplanPage() {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
-  const currentWeek = getCurrentWeek();
-  const currentYear = new Date().getFullYear();
+  if (!session) redirect("/login");
 
   const weekPlans = await prisma.weekPlan.findMany({
-    where: { userId, weekNumber: currentWeek, year: currentYear },
     orderBy: { dayOfWeek: "asc" },
   });
 
@@ -27,15 +17,9 @@ export default async function UkeplanPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Ukeplan</h1>
-        <p className="text-gray-500 mt-1">
-          Uke {currentWeek}, {currentYear}
-        </p>
+        <p className="text-gray-500 mt-1">Felles ukeplan for alle ansatte</p>
       </div>
-      <WeekPlanView
-        initialPlans={weekPlans}
-        weekNumber={currentWeek}
-        year={currentYear}
-      />
+      <WeekPlanView initialPlans={weekPlans} />
     </div>
   );
 }

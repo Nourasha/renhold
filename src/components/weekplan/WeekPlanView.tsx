@@ -1,7 +1,8 @@
 "use client";
 // src/components/weekplan/WeekPlanView.tsx
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { WeekPlanDayCard } from "./WeekPlanDayCard";
+import { addWeekPlan, deleteWeekPlan } from "@/app/dashboard/ukeplan/actions";
 
 interface WeekPlan {
   id: string;
@@ -24,40 +25,27 @@ const days = [
 
 const emptyForm = { title: "", description: "", startTime: "", endTime: "" };
 
-export function WeekPlanView({
-  initialPlans,
-  weekNumber,
-  year,
-}: {
-  initialPlans: WeekPlan[];
-  weekNumber: number;
-  year: number;
-}) {
+export function WeekPlanView({ initialPlans }: { initialPlans: WeekPlan[] }) {
   const [plans, setPlans] = useState<WeekPlan[]>(initialPlans);
   const [showFormFor, setShowFormFor] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleAdd(dayOfWeek: string) {
+  function handleAdd(dayOfWeek: string) {
     if (!form.title) return;
-    setLoading(true);
-    const res = await fetch("/api/weekplan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, dayOfWeek, weekNumber, year }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setPlans([...plans, data.plan]);
+    startTransition(async () => {
+      const plan = await addWeekPlan({ ...form, dayOfWeek });
+      setPlans((prev) => [...prev, plan]);
       setForm(emptyForm);
       setShowFormFor(null);
-    }
-    setLoading(false);
+    });
   }
 
-  async function handleDelete(id: string) {
-    await fetch(`/api/weekplan/${id}`, { method: "DELETE" });
-    setPlans(plans.filter((p) => p.id !== id));
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      await deleteWeekPlan(id);
+      setPlans((prev) => prev.filter((p) => p.id !== id));
+    });
   }
 
   return (
@@ -70,7 +58,7 @@ export function WeekPlanView({
           dayPlans={plans.filter((p) => p.dayOfWeek === key)}
           isAdding={showFormFor === key}
           form={form}
-          loading={loading}
+          loading={isPending}
           onToggleForm={() => setShowFormFor(showFormFor === key ? null : key)}
           onFormChange={setForm}
           onAdd={handleAdd}
