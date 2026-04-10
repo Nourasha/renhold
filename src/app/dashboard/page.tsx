@@ -20,18 +20,24 @@ export default async function DashboardPage() {
       description: "Ukentlig sjekkliste for dagens arbeidsoppgaver",
       href: "/dashboard/oppgaver",
       icon: "📋",
+      cardClass: "bg-blue-50 border-blue-200 hover:bg-blue-100",
+      titleHover: "group-hover:text-blue-700",
     },
     {
       title: "Ferdige oppgaver",
       description: "Godkjente oppgaver og notater",
       href: "/dashboard/ferdige",
       icon: "✅",
+      cardClass: "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+      titleHover: "group-hover:text-emerald-700",
     },
     {
       title: "Ukeplan",
       description: "Planlegg og se ukens aktiviteter",
       href: "/dashboard/ukeplan",
       icon: "📅",
+      cardClass: "bg-violet-50 border-violet-200 hover:bg-violet-100",
+      titleHover: "group-hover:text-violet-700",
     },
   ];
 
@@ -51,12 +57,12 @@ export default async function DashboardPage() {
           <Link
             key={card.title}
             href={card.href}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow group"
+            className={`${card.cardClass} rounded-xl shadow-sm border p-6 hover:shadow-md transition-all group`}
           >
             <div className="flex items-start justify-between mb-4">
               <span className="text-3xl">{card.icon}</span>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+            <h2 className={`text-lg font-semibold text-gray-900 ${card.titleHover} transition-colors`}>
               {card.title}
             </h2>
             <p className="text-sm text-gray-500 mt-1">{card.description}</p>
@@ -65,13 +71,13 @@ export default async function DashboardPage() {
 
         <Link
           href="/dashboard/avvik"
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow group"
+          className="bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl shadow-sm p-6 hover:shadow-md transition-all group"
         >
           <div className="flex items-start justify-between mb-4">
             <span className="text-3xl">⚠️</span>
             <AvvikCount initialCount={deviations} />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+          <h2 className="text-lg font-semibold text-gray-900 group-hover:text-amber-700 transition-colors">
             Avvik
           </h2>
           <p className="text-sm text-gray-500 mt-1">
