@@ -4,11 +4,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminInvitePanel } from "@/components/admin/AdminInvitePanel";
 import { AdminUserPanel } from "@/components/admin/AdminUserPanel";
+import { notFound } from "next/navigation";
 
 export const revalidate = 0;
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
+
+  if ((session?.user as any)?.role !== "admin") {
+    notFound();
+  }
 
   const [codes, users] = await Promise.all([
     prisma.inviteCode.findMany({
