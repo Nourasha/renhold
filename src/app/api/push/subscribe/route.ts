@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.pushSubscription.upsert({
     where: { endpoint },
-    update: { p256dh: keys.p256dh, auth: keys.auth, userId },
+    update: { p256dh: keys.p256dh, auth: keys.auth },
     create: { endpoint, p256dh: keys.p256dh, auth: keys.auth, userId },
   });
 
@@ -28,7 +28,8 @@ export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Ikke autorisert" }, { status: 401 });
 
+  const userId = (session.user as any).id;
   const { endpoint } = await req.json();
-  await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+  await prisma.pushSubscription.deleteMany({ where: { endpoint, userId } });
   return NextResponse.json({ success: true });
 }
