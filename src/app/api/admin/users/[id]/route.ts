@@ -41,6 +41,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Ugyldig rolle" }, { status: 400 });
   }
 
+  if (role === "user") {
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } });
+    if (target?.role === "admin") {
+      const adminCount = await prisma.user.count({ where: { role: "admin" } });
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: "Kan ikke fjerne siste administrator" }, { status: 400 });
+      }
+    }
+  }
+
   const updated = await prisma.user.update({
     where: { id: params.id },
     data: { role },

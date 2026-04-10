@@ -11,6 +11,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date"); // YYYY-MM-DD, optional
 
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: "Ugyldig datoformat" }, { status: 400 });
+  }
+
   const notes = await prisma.dailyNote.findMany({
     where: {
       ...(date ? { date } : {}),
