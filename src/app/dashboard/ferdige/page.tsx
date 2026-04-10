@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CompletedChecklist } from "@/components/checklist/CompletedChecklist";
+import { getShiftDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -9,7 +10,7 @@ export const revalidate = 0;
 export default async function FerdigeOppgaverPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
-  const today = new Date().toISOString().split("T")[0];
+  const today = getShiftDate();
 
   const [completions, notes] = await Promise.all([
     prisma.checklistCompletion.findMany({

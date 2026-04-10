@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession, requireAdmin } from "@/lib/serverSession";
+import { getShiftDate } from "@/lib/utils";
 
 export async function completeChecklistItemsAction(itemIds: string[]) {
   const user = await requireSession();
@@ -11,7 +12,7 @@ export async function completeChecklistItemsAction(itemIds: string[]) {
     return { ok: false, error: "Ingen oppgaver valgt" };
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getShiftDate();
 
   await prisma.$transaction(
     itemIds.map((itemId) =>

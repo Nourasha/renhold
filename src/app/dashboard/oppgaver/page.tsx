@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
+import { getShiftDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,7 +17,7 @@ export default async function OppgaverPage() {
 
   if (!user?.id) return null;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getShiftDate();
 
   const rawGroups = await prisma.checklistGroup.findMany({
     orderBy: { order: "asc" },

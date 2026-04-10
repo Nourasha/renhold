@@ -97,6 +97,29 @@ export const statusConfig = {
   resolved: { label: "Løst", color: "bg-green-100 text-green-700" },
 } as const;
 
+// ─── Night shift date ──────────────────────────────────────
+
+/**
+ * Returns the "shift date" in YYYY-MM-DD format (Europe/Oslo timezone).
+ * Night shift runs 22:00–06:00, so hours 00–05 belong to the previous day.
+ */
+export function getShiftDate(): string {
+  const now = new Date();
+  // sv-SE locale gives "YYYY-MM-DD HH:MM:SS" — reliable cross-env
+  const osloStr = now.toLocaleString("sv-SE", { timeZone: "Europe/Oslo" });
+  const [datePart, timePart] = osloStr.split(" ");
+  const hour = parseInt(timePart.split(":")[0]);
+
+  if (hour < 6) {
+    // Still in the previous night's shift
+    const [y, m, d] = datePart.split("-").map(Number);
+    const prev = new Date(Date.UTC(y, m - 1, d - 1));
+    return prev.toISOString().split("T")[0];
+  }
+
+  return datePart;
+}
+
 // ─── Date / week utilities ─────────────────────────────────
 
 export const DAYS_NO = [
