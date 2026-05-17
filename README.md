@@ -1,6 +1,6 @@
 # Intern WebApp
 
-En intern webapplikasjon bygget med Next.js 14, TypeScript, Prisma (SQLite) og TailwindCSS.
+En intern webapplikasjon bygget med Next.js, TypeScript, Prisma (SQLite) og TailwindCSS.
 
 ## Funksjoner
 
