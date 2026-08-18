@@ -38,18 +38,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        console.log(
-          "[DIAG] DB host:",
-          process.env.DATABASE_URL?.split("@")[1],
-          "| total users:",
-          await prisma.user.count(),
-        );
-
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
-
-        console.log("[DIAG] Looking for:", credentials.email, "| found:", !!user);
 
         if (!user) return null;
 
