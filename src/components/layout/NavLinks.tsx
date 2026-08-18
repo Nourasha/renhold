@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Oversikt", icon: "🏠" },
   { href: "/dashboard/oppgaver", label: "Arbeidsoppgaver", icon: "📋", noCache: true },
   { href: "/dashboard/ferdige", label: "Ferdige oppgaver", icon: "✅", noCache: true },
   { href: "/dashboard/ukeplan", label: "Ukeplan", icon: "📅" },
-  { href: "/dashboard/avvik", label: "Avvik", icon: "⚠️", noCache: true },
+  { href: "/dashboard/avvik", label: "Avvik", icon: "⚠️", noCache: true, showAvvikBadge: true },
 ];
 
 interface Props {
@@ -18,6 +19,24 @@ interface Props {
 
 export function NavLinks({ role, onClick }: Props) {
   const pathname = usePathname();
+  const [avvikCount, setAvvikCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchCount() {
+      try {
+        const res = await fetch("/api/avvik/count", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        setAvvikCount(data.count);
+      } catch (error) {
+        console.error("Feil ved henting av avvik-count:", error);
+      }
+    }
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   function linkClass(href: string) {
     const isActive = pathname === href || pathname.startsWith(href + "?");
@@ -40,6 +59,11 @@ export function NavLinks({ role, onClick }: Props) {
           >
             <span className="text-base">{item.icon}</span>
             <span className="flex-1">{item.label}</span>
+            {item.showAvvikBadge && avvikCount > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {avvikCount}
+              </span>
+            )}
           </a>
         ) : (
           <Link
